@@ -1,0 +1,11 @@
+Built-in image generation; ui-mockup reference, 1536x1024.
+MOSQUE SUITE offline-first administration for older Kerala clerks, Phase 1 foundation.
+White sidebar, cool-gray background, white border-only panels, forest-green actions,
+Segoe UI, accessible large controls, bilingual ward names, outline icons.
+Full screen: brand/sidebar; workspace breadcrumb and language/theme controls;
+fictional-data foundation notice; "A place for every family." heading;
+Configure mosque; three metrics (4 active wards, registry/contributions Not started);
+four bilingual Ward 1–4 rows; setup/storage panel; three-stage roadmap; preview footer.
+Future navigation visibly unavailable. No fake people, financial metrics, authentication
+or backup health. No photography, gradients, decorative art or marketing badges.
+Reference only; all runtime text/controls implemented in React/CSS.

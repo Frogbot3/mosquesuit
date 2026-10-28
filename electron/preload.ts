@@ -1,0 +1,47 @@
+import { contextBridge, ipcRenderer } from 'electron';
+import type { DesktopApi } from '../shared/contracts';
+import { CHANNELS } from '../shared/channels';
+import { FINANCE_CHANNELS } from '../shared/finance-channels';
+
+const api: DesktopApi = {
+  getFinanceSetup: () => ipcRenderer.invoke(FINANCE_CHANNELS.getFinanceSetup,{}),
+  setFinanceDemoRole: input => ipcRenderer.invoke(FINANCE_CHANNELS.setFinanceDemoRole,input),
+  saveFinancePlan: input => ipcRenderer.invoke(FINANCE_CHANNELS.saveFinancePlan,input),
+  saveFinanceAssignment: input => ipcRenderer.invoke(FINANCE_CHANNELS.saveFinanceAssignment,input),
+  saveFinancePolicy: input => ipcRenderer.invoke(FINANCE_CHANNELS.saveFinancePolicy,input),
+  generateFinanceDues: input => ipcRenderer.invoke(FINANCE_CHANNELS.generateFinanceDues,input),
+  getFamilyFinance: input => ipcRenderer.invoke(FINANCE_CHANNELS.getFamilyFinance,input),
+  recordFinancePayment: input => ipcRenderer.invoke(FINANCE_CHANNELS.recordFinancePayment,input),
+  applyFinanceCredit: input => ipcRenderer.invoke(FINANCE_CHANNELS.applyFinanceCredit,input),
+  adjustFinanceDue: input => ipcRenderer.invoke(FINANCE_CHANNELS.adjustFinanceDue,input),
+  correctFinanceTransaction: input => ipcRenderer.invoke(FINANCE_CHANNELS.correctFinanceTransaction,input),
+  saveFinanceFund: input => ipcRenderer.invoke(FINANCE_CHANNELS.saveFinanceFund,input),
+  saveFinanceCategory: input => ipcRenderer.invoke(FINANCE_CHANNELS.saveFinanceCategory,input),
+  recordFinanceDonation: input => ipcRenderer.invoke(FINANCE_CHANNELS.recordFinanceDonation,input),
+  recordFinanceExpense: input => ipcRenderer.invoke(FINANCE_CHANNELS.recordFinanceExpense,input),
+  decideFinanceExpense: input => ipcRenderer.invoke(FINANCE_CHANNELS.decideFinanceExpense,input),
+  getFinanceDashboard: input => ipcRenderer.invoke(FINANCE_CHANNELS.getFinanceDashboard,input),
+  getFinanceReport: input => ipcRenderer.invoke(FINANCE_CHANNELS.getFinanceReport,input),
+  getFinanceTransaction: input => ipcRenderer.invoke(FINANCE_CHANNELS.getFinanceTransaction,input),
+  getFinanceReceipt: input => ipcRenderer.invoke(FINANCE_CHANNELS.getFinanceReceipt,input),
+  getFinanceAudit: () => ipcRenderer.invoke(FINANCE_CHANNELS.getFinanceAudit,{}),
+  saveFinanceConfig: input => ipcRenderer.invoke(FINANCE_CHANNELS.saveFinanceConfig,input),
+  chooseFinanceLogo: input => ipcRenderer.invoke(FINANCE_CHANNELS.chooseFinanceLogo,input),
+  outputFinanceDocument: input => ipcRenderer.invoke(FINANCE_CHANNELS.outputFinanceDocument,input),
+  backupFinance: () => ipcRenderer.invoke(FINANCE_CHANNELS.backupFinance,{}),
+  getSnapshot: () => ipcRenderer.invoke(CHANNELS.snapshot, {}),
+  saveSettings: settings => ipcRenderer.invoke(CHANNELS.settings, settings),
+  checkStorage: () => ipcRenderer.invoke(CHANNELS.health, {}),
+  resetDemo: request => ipcRenderer.invoke(CHANNELS.reset, request),
+  listFamilies: query => ipcRenderer.invoke(CHANNELS.families, query),
+  getFamily: request => ipcRenderer.invoke(CHANNELS.family, request),
+  saveFamily: family => ipcRenderer.invoke(CHANNELS.saveFamily, family),
+  listMembers: query => ipcRenderer.invoke(CHANNELS.members, query),
+  getMember: request => ipcRenderer.invoke(CHANNELS.member, request),
+  listEvents: query => ipcRenderer.invoke(CHANNELS.events,query), getEvent: request => ipcRenderer.invoke(CHANNELS.event,request),
+  saveEvent: draft => ipcRenderer.invoke(CHANNELS.saveEvent,draft), transitionEvent: request => ipcRenderer.invoke(CHANNELS.transitionEvent,request),
+  getEventCategories: () => ipcRenderer.invoke(CHANNELS.categories,{}), saveEventCategory: request => ipcRenderer.invoke(CHANNELS.saveCategory,request),
+  transferMember: request => ipcRenderer.invoke(CHANNELS.transfer,request), getTransfers: request => ipcRenderer.invoke(CHANNELS.transfers,request),
+  attachEventDocument: request => ipcRenderer.invoke(CHANNELS.attachDocument,request), exportEventDocument: request => ipcRenderer.invoke(CHANNELS.exportDocument,request), outputEvent: request => ipcRenderer.invoke(CHANNELS.outputEvent,request),
+};
+contextBridge.exposeInMainWorld('mosque', Object.freeze(api));

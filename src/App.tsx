@@ -1,0 +1,46 @@
+import { createHashRouter, Link, RouterProvider } from 'react-router-dom';
+import { WorkspaceProvider } from './components/WorkspaceProvider';
+import { Layout } from './components/Layout';
+import { Dashboard } from './pages/Dashboard';
+
+const router = createHashRouter([{
+  element: <WorkspaceProvider><Layout /></WorkspaceProvider>,
+  errorElement: <main className="startup"><h1>Unable to open this page</h1><p>Restart Mosque Suite to reopen the local workspace.</p></main>,
+  children: [
+    { index: true, element: <Dashboard /> },
+    { path: 'wards', lazy: async () => ({ Component: (await import('./pages/Wards')).Wards }) },
+    { path: 'families', lazy: async () => ({ Component: (await import('./pages/Families')).Families }) },
+    { path: 'families/new', lazy: async () => ({ Component: (await import('./pages/FamilyEditor')).FamilyEditor }) },
+    { path: 'families/:id/edit', lazy: async () => ({ Component: (await import('./pages/FamilyEditor')).FamilyEditor }) },
+    { path: 'families/:id', lazy: async () => ({ Component: (await import('./pages/FamilyProfile')).FamilyProfilePage }) },
+    { path: 'members', lazy: async () => ({ Component: (await import('./pages/Members')).Members }) },
+    { path: 'members/:id', lazy: async () => ({ Component: (await import('./pages/MemberDetail')).MemberDetail }) },
+    { path: 'events/:kind', lazy: async () => ({ Component: (await import('./pages/LifeEvents')).LifeEvents }) },
+    { path: 'events/:kind/new', lazy: async () => ({ Component: (await import('./pages/LifeEventEditor')).LifeEventEditor }) },
+    { path: 'events/:kind/:id/edit', lazy: async () => ({ Component: (await import('./pages/LifeEventEditor')).LifeEventEditor }) },
+    { path: 'events/:kind/:id', lazy: async () => ({ Component: (await import('./pages/LifeEventDetail')).LifeEventDetail }) },
+    { path: 'household-transfer', lazy: async () => ({ Component: (await import('./pages/HouseholdTransfer')).HouseholdTransfer }) },
+    { path: 'event-categories', lazy: async () => ({ Component: (await import('./pages/EventCategories')).EventCategories }) },
+    { path: 'payments', lazy: async () => ({ Component: (await import('./pages/FinanceDashboard')).FinanceDashboardPage }) },
+    { path: 'finance/plans', lazy: async () => ({ Component: (await import('./pages/FinancePlans')).FinancePlansPage }) },
+    { path: 'finance/assignments', lazy: async () => ({ Component: (await import('./pages/FinancePlans')).FinanceAssignmentPage }) },
+    { path: 'finance/generate', lazy: async () => ({ Component: (await import('./pages/FinancePlans')).FinanceGenerationPage }) },
+    { path: 'finance/collect', lazy: async () => ({ Component: (await import('./pages/FinanceCollection')).FinanceCollectionPage }) },
+    { path: 'finance/families/:id', lazy: async () => ({ Component: (await import('./pages/FinanceFamily')).FinanceFamilyPage }) },
+    { path: 'finance/adjust', lazy: async () => ({ Component: (await import('./pages/FinanceFamily')).FinanceAdjustmentPage }) },
+    { path: 'finance/receipts/:id', lazy: async () => ({ Component: (await import('./pages/FinanceReceipt')).FinanceReceiptPage }) },
+    { path: 'finance/transactions/:id', lazy: async () => ({ Component: (await import('./pages/FinanceReceipt')).FinanceTransactionPage }) },
+    { path: 'donations', lazy: async () => ({ Component: (await import('./pages/FinanceDonations')).FinanceDonationsPage }) },
+    { path: 'finance/funds', lazy: async () => ({ Component: (await import('./pages/FinanceDonations')).FinanceFundsPage }) },
+    { path: 'finance/expenses', lazy: async () => ({ Component: (await import('./pages/FinanceExpenses')).FinanceExpensesPage }) },
+    { path: 'finance/approvals', lazy: async () => ({ Component: (await import('./pages/FinanceExpenses')).FinanceApprovalsPage }) },
+    { path: 'reports', lazy: async () => ({ Component: (await import('./pages/FinanceReports')).FinanceReportsPage }) },
+    { path: 'finance/settings', lazy: async () => ({ Component: (await import('./pages/FinanceSettings')).FinanceSettingsPage }) },
+    { path: 'finance/categories', lazy: async () => ({ Component: (await import('./pages/FinanceSettings')).FinanceCategoriesPage }) },
+    { path: 'finance/audit', lazy: async () => ({ Component: (await import('./pages/FinanceSettings')).FinanceAuditPage }) },
+    { path: 'settings', lazy: async () => ({ Component: (await import('./pages/Settings')).SettingsPage }) },
+    { path: 'activity', lazy: async () => ({ Component: (await import('./pages/Activity')).Activity }) },
+    { path: '*', element: <section className="empty-state"><h1>Page not found</h1><Link to="/" className="button primary">Dashboard</Link></section> },
+  ],
+}]);
+export function App() { return <RouterProvider router={router} />; }

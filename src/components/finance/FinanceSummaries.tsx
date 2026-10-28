@@ -1,0 +1,9 @@
+import { useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { financeFilters,money } from '../../../shared/finance';
+import { FinanceState,useFinanceText } from './FinanceShared';
+import { useWorkspace } from '../WorkspaceProvider';
+import { desktop,unwrap } from '../../lib/api';
+import { useRegistrationData } from '../../lib/useRegistrationData';
+export function FamilyFinanceSummary({id}:{id:string}){const t=useFinanceText();const {snapshot}=useWorkspace();const load=useCallback(()=>unwrap(desktop().getFamilyFinance({id})),[id]);const result=useRegistrationData(load);return <section className="panel profile-history"><div className="section-heading"><h2>{t('familyFinance')}</h2><Link className="text-link" to={`/finance/families/${id}`}>{t('view')}</Link></div><FinanceState {...result}/>{result.data&&<><dl className="finance-metrics"><div><dt>{t('outstandingPaise')}</dt><dd>{money(result.data.outstandingPaise,snapshot.settings.locale)}</dd></div><div><dt>{t('creditPaise')}</dt><dd>{money(result.data.creditPaise,snapshot.settings.locale)}</dd></div></dl><Link className="button primary" to={`/finance/collect?family=${id}`}>{t('collect')}</Link></>}</section>;}
+export function DashboardFinanceSummary(){const t=useFinanceText();const load=useCallback(()=>unwrap(desktop().getFinanceDashboard(financeFilters())),[]);const result=useRegistrationData(load);return <section className="panel profile-history"><div className="section-heading"><h2>{t('overview')}</h2><Link className="text-link" to="/payments">{t('view')}</Link></div><FinanceState {...result}/>{result.data&&<dl className="finance-metrics">{(['collectedPaise','outstandingPaise','netCashPaise'] as const).map(key=><div key={key}><dt>{t(key)}</dt><dd>{money(result.data![key])}</dd></div>)}</dl>}</section>;}
