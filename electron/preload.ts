@@ -1,9 +1,47 @@
+import { securityChannels } from '../shared/security';
+import { integrationChannels } from '../shared/integrations';
 import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopApi } from '../shared/contracts';
 import { CHANNELS } from '../shared/channels';
 import { FINANCE_CHANNELS } from '../shared/finance-channels';
 
 const api: DesktopApi = {
+  getSecurityState: () => ipcRenderer.invoke(securityChannels.getSecurityState,{}),
+  bootstrapAdministrator: input => ipcRenderer.invoke(securityChannels.bootstrapAdministrator,input),
+  loginStaff: input => ipcRenderer.invoke(securityChannels.loginStaff,input),
+  logoutStaff: () => ipcRenderer.invoke(securityChannels.logoutStaff,{}),
+  lockSession: () => ipcRenderer.invoke(securityChannels.lockSession,{}),
+  touchSession: () => ipcRenderer.invoke(securityChannels.touchSession,{}),
+  changeStaffPassword: input => ipcRenderer.invoke(securityChannels.changeStaffPassword,input),
+  recoverStaffAccount: input => ipcRenderer.invoke(securityChannels.recoverStaffAccount,input),
+  renewRecoveryFile: input => ipcRenderer.invoke(securityChannels.renewRecoveryFile,input),
+  getStaffDirectory: () => ipcRenderer.invoke(securityChannels.getStaffDirectory,{}),
+  saveStaffAccount: input => ipcRenderer.invoke(securityChannels.saveStaffAccount,input),
+  resetStaffPassword: input => ipcRenderer.invoke(securityChannels.resetStaffPassword,input),
+  saveStaffRole: input => ipcRenderer.invoke(securityChannels.saveStaffRole,input),
+  saveSecuritySettings: input => ipcRenderer.invoke(securityChannels.saveSecuritySettings,input),
+  getSecurityAudit: input => ipcRenderer.invoke(securityChannels.getSecurityAudit,input),
+  getBackupState: () => ipcRenderer.invoke(securityChannels.getBackupState,{}),
+  configureBackups: input => ipcRenderer.invoke(securityChannels.configureBackups,input),
+  createEncryptedBackup: input => ipcRenderer.invoke(securityChannels.createEncryptedBackup,input),
+  previewEncryptedBackup: input => ipcRenderer.invoke(securityChannels.previewEncryptedBackup,input),
+  restoreEncryptedBackup: input => ipcRenderer.invoke(securityChannels.restoreEncryptedBackup,input),
+  getIntegrationState: () => ipcRenderer.invoke(integrationChannels.getIntegrationState,{}),
+  saveMessagingConsent: input => ipcRenderer.invoke(integrationChannels.saveMessagingConsent,input),
+  saveNotificationTemplate: input => ipcRenderer.invoke(integrationChannels.saveNotificationTemplate,input),
+  previewNotifications: input => ipcRenderer.invoke(integrationChannels.previewNotifications,input),
+  queueNotifications: input => ipcRenderer.invoke(integrationChannels.queueNotifications,input),
+  decideNotifications: input => ipcRenderer.invoke(integrationChannels.decideNotifications,input),
+  saveReminderSchedule: input => ipcRenderer.invoke(integrationChannels.saveReminderSchedule,input),
+  runReminderSchedules: () => ipcRenderer.invoke(integrationChannels.runReminderSchedules,{}),
+  saveIntegrationConfig: input => ipcRenderer.invoke(integrationChannels.saveIntegrationConfig,input),
+  setIntegrationMock: input => ipcRenderer.invoke(integrationChannels.setIntegrationMock,input),
+  syncIntegrations: () => ipcRenderer.invoke(integrationChannels.syncIntegrations,{}),
+  createOnlinePaymentLink: input => ipcRenderer.invoke(integrationChannels.createOnlinePaymentLink,input),
+  cancelOnlinePaymentLink: input => ipcRenderer.invoke(integrationChannels.cancelOnlinePaymentLink,input),
+  simulateIntegrationEvent: input => ipcRenderer.invoke(integrationChannels.simulateIntegrationEvent,input),
+  requestOnlineRefund: input => ipcRenderer.invoke(integrationChannels.requestOnlineRefund,input),
+  resolveOnlineConflict: input => ipcRenderer.invoke(integrationChannels.resolveOnlineConflict,input),
   getFinanceSetup: () => ipcRenderer.invoke(FINANCE_CHANNELS.getFinanceSetup,{}),
   setFinanceDemoRole: input => ipcRenderer.invoke(FINANCE_CHANNELS.setFinanceDemoRole,input),
   saveFinancePlan: input => ipcRenderer.invoke(FINANCE_CHANNELS.saveFinancePlan,input),

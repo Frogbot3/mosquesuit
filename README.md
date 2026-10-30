@@ -1,6 +1,6 @@
 # Mosque Suite
 
-An offline-first Windows desktop workspace for mosque administration. **Version 0.4.0 adds Phase 4 contributions, dues, payments, receipts, donations, expenses and reports in a separate fictional finance demo. Staff authentication and recovery are still pending; use fictional information only.**
+An offline-first Windows desktop workspace for mosque administration. **Version 0.5.0 adds Phase 5 consent, notifications, offline queues, schedules, simulated online payments, verified webhooks and receipt delivery in a separate integration demo. Staff authentication and recovery are still pending; use fictional information only.**
 
 ## What works
 
@@ -17,7 +17,20 @@ An offline-first Windows desktop workspace for mosque administration. **Version 
 
 - Isolated demo marriage/divorce/death registries, explicit member-status transitions, guardian reassignment flags, separately confirmed household transfers, attachment copies and bilingual PDF/native-print output.
 
-Financial management, simulated demo permissions, bilingual receipts, PDF/Excel/CSV reports and consistent SQLite snapshot backups are implemented in the separate finance demo. Messaging, family-sheet printing, imports, authenticated staff permissions, encryption, restore and ward administration remain planned. No Aadhaar fields or identity-number storage are provided. See [Phase 4 delivery, accounting rules and verification](docs/PHASE-4.md).
+Financial management, simulated demo permissions, bilingual receipts, PDF/Excel/CSV reports and SQLite snapshot backups are implemented. Phase 5 adds mocked messaging/payment workflows and a separately built secure service foundation. Real provider activation, family-sheet printing, imports, authenticated staff permissions, encryption, restore and ward administration remain pending. No Aadhaar fields or identity-number storage are provided. See [Phase 4 accounting rules](docs/PHASE-4.md) and [Phase 5 setup and verification](docs/PHASE-5.md).
+
+## Open the Phase 5 integration demo
+
+Double-click **Open-Mosque-Integrations.cmd** in this folder, or run:
+
+```powershell
+npm.cmd run build
+npm.cmd run demo:integrations
+```
+
+This includes registration, life events, finance and Phase 5 in a separate fictional workspace. Start with **Notifications** or **Settings → Integrations**. It uses mocked providers: no real messages, money or public service. See the [walkthrough and service setup](docs/PHASE-5.md). This launcher is not an installer.
+
+Verified: **87 unit/component/service tests and 25 Electron tests passed**, including earlier phases; **one packaged test skipped**. TypeScript, renderer, Electron and standalone-service builds passed.
 
 ## Open the finance demo
 

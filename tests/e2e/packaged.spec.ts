@@ -8,7 +8,7 @@ test('packaged Windows executable opens SQLite and refuses development reset', a
     const page = await app.firstWindow();
     await expect(page.getByRole('heading').first()).toBeVisible();
     expect(await app.evaluate(({ app }) => app.isPackaged)).toBe(true);
-    expect(await page.evaluate(() => window.mosque!.getSnapshot())).toMatchObject({ ok: true, data: { environment: 'preview', canResetDemo: false, schemaVersion: 4, lifeEventsDemo: false } });
+    expect(await page.evaluate(() => window.mosque!.getSnapshot())).toMatchObject({ ok: true, data: { environment: 'preview', canResetDemo: false, schemaVersion: 5, lifeEventsDemo: false } });
     expect(await page.evaluate(() => window.mosque!.checkStorage())).toMatchObject({ ok: true, data: { integrity: 'ok', foreignKeys: true } });
     expect(await page.evaluate(() => window.mosque!.resetDemo({ confirmation: 'RESET DEMO' }))).toMatchObject({ ok: false, error: { code: 'FORBIDDEN' } });
     await page.context().setOffline(true); await page.reload();

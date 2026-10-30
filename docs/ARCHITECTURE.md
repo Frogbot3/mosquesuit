@@ -1,6 +1,6 @@
 # Phase 0 architecture
 
-This document records the original Phase 0/1 design and delivery. The current 0.4.0 implementation extends it with [registration](PHASE-2.md), [life events](PHASE-3.md) and [financial management](PHASE-4.md), schema version 4 and 45 named IPC methods. The sections below retain the original foundation context; later delivery reports describe the implemented extensions.
+This document records the original Phase 0/1 design and delivery. Version 0.5.0 extends it with [registration](PHASE-2.md), [life events](PHASE-3.md), [financial management](PHASE-4.md) and [integration simulation](PHASE-5.md), schema version 5 and 61 named IPC methods. The sections below retain the original foundation context; later delivery reports describe the implemented extensions.
 
 Inspected 25 October 2026. The workspace was empty: no source code, package manifest, Git repository or inherited project instructions. Node 24.18.0 and npm 11.16.0 were available; Git and a Visual Studio C++ build environment were not on PATH. No existing work was overwritten. No live personal information was supplied or imported.
 

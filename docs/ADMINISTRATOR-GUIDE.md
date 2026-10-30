@@ -1,8 +1,8 @@
-# Administrator guide — registration, life events and finance demo
+# Administrator guide — registration, life events, finance and integrations
 
 ## Scope
 
-Version 0.4.0 lets you evaluate family/member registration and separate fictional life-event and financial workspaces. Staff login, ward permissions, encrypted backup, restore and messaging remain unavailable. Life-event PDF/print output is marked as a fictional mosque administrative record. The dashboard family count reflects saved households. Contributions and financial reporting are available only in the separate finance demo.
+Version 0.5.0 lets you evaluate registration, life events, finance and mocked messaging/online payment workflows in separate fictional workspaces. Staff login, ward permissions, encrypted recovery and real provider activation remain unavailable. Open **Open-Mosque-Integrations.cmd** or run `npm.cmd run demo:integrations` for Phase 5; see the [Phase 5 walkthrough](PHASE-5.md). It includes the earlier demo modules. No real messages or money are enabled.
 
 ## Run the preview
 

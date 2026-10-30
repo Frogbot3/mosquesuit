@@ -1,3 +1,4 @@
+import { integrationText } from '../../shared/integration-labels';
 import { useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, Printer, ShieldCheck } from 'lucide-react';
@@ -25,7 +26,7 @@ export function FamilyProfilePage() {
   const date = (value: string) => value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'Asia/Kolkata' }).format(new Date(value)) : r('notRecorded');
   const time = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(value));
   const title = snapshot.settings.locale === 'ml' ? family.houseNameMl || family.houseName : family.houseName || family.houseNameMl;
-  return <>
+  return <>{snapshot.integrationsDemo&&<div className="life-actions"><Link className="button secondary" to={`/integrations/consent?family=${id}`}>{integrationText(snapshot.settings.locale,'consents')}</Link><Link className="button secondary" to={`/integrations/payments?family=${id}`}>{integrationText(snapshot.settings.locale,'onlinePayments')}</Link></div>}
     <Link className="back-link" to="/families"><ArrowLeft size={17} />{r('backFamilies')}</Link>
     <PageHeading title={title || `${r('familyProfile')} ${family.familyCode}`} description={`${family.familyCode} · ${snapshot.settings.locale === 'ml' ? family.wardNameMl || family.wardName : family.wardName}`} action={<Link className="button primary" to={`/families/${id}/edit`}><Pencil size={18} />{r('editFamily')}</Link>} />
     <section className="panel profile-overview"><div className="section-heading"><h2>{r('familyDetails')}</h2><RegistrationStatus status={family.status} /></div>

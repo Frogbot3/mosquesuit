@@ -1,3 +1,5 @@
+import { securityApiMocks } from '../fixtures/security-api';
+import { integrationMocks } from '../fixtures/integrations-api';
 // @vitest-environment jsdom
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -13,11 +15,11 @@ import { financeApiMocks } from '../fixtures/finance-api';
 const fixture: Snapshot = {
   settings: { name: 'Demo Mosque', nameMl: 'മാതൃകാ പള്ളി', address: '', contact: '', locale: 'en', theme: 'light', revision: 0 },
   wards: [{ id: '1', code: 'W1', name: 'Ward 1', nameMl: 'വാർഡ് 1', active: true }, { id: '2', code: 'W2', name: 'Ward 2', nameMl: 'വാർഡ് 2', active: true }],
-  activity: [], environment: 'test', version: '0.4.0', canResetDemo: true, schemaVersion: 4, registryCounts: { families: 0, livingMembers: 0 }, lifeEventsDemo: false,financeDemo:false,
+  activity: [], environment: 'test', version: '0.5.0', canResetDemo: true, schemaVersion: 5, registryCounts: { families: 0, livingMembers: 0 }, lifeEventsDemo: false,financeDemo:false,integrationsDemo:false,
 };
 function setup(page: 'wards' | 'settings') {
   window.mosque = {
-    ...lifeApiMocks(),...financeApiMocks(),
+    ...lifeApiMocks(),...financeApiMocks(),...integrationMocks(),...securityApiMocks(),
     getSnapshot: vi.fn().mockResolvedValue({ ok: true, data: structuredClone(fixture) }),
     saveSettings: vi.fn(async (settings: Settings) => ({ ok: true as const, data: { ...settings, revision: settings.revision + 1 } })),
     checkStorage: vi.fn().mockResolvedValue({ ok: true, data: { integrity: 'ok', schemaVersion: 2, foreignKeys: true, journalMode: 'wal' } }),

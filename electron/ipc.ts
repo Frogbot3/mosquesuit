@@ -1,3 +1,4 @@
+import { SecurityError } from '../shared/security';
 import { ipcMain, type BrowserWindow } from 'electron';
 import { z } from 'zod';
 import { emptyRequest, resetSchema, settingsSchema, type Result, type Snapshot } from '../shared/contracts';
@@ -19,7 +20,7 @@ export function registerIpc(window: BrowserWindow, store: WorkspaceStore, info: 
       if (!parsed.success) return { ok: false, error: { code: 'VALIDATION', message: 'Check the supplied fields and try again.' } };
       try { return { ok: true, data: action(parsed.data) }; }
       catch (error) {
-        if (error instanceof RegistryError || error instanceof LifeEventError) return { ok: false, error: { code: error.code, message: 'The registration could not be saved. Review the record and try again.' } };
+        if (error instanceof SecurityError || error instanceof RegistryError || error instanceof LifeEventError) return { ok: false, error: { code: error.code, message: 'The registration could not be saved. Review the record and try again.' } };
         if (error instanceof ConflictError) return { ok: false, error: { code: 'CONFLICT', message: error.message } };
         // Never return SQL, paths, stack traces, or submitted values to the renderer.
         return { ok: false, error: { code: 'STORAGE', message: 'The change could not be completed. Your existing records were kept. Restart the app and try again.' } };
@@ -27,7 +28,7 @@ export function registerIpc(window: BrowserWindow, store: WorkspaceStore, info: 
     });
   }
   handle(CHANNELS.snapshot, emptyRequest, (): Snapshot => ({
-    ...info, settings: store.getSettings(), wards: store.getWards(), activity: store.getActivity(), schemaVersion: store.getSchemaVersion(), registryCounts: store.registration.counts(), lifeEventsDemo: store.lifeEvents.enabled,financeDemo:store.finance.enabled,
+    ...info, settings: store.getSettings(), wards: store.getWards(), activity: store.getActivity(), schemaVersion: store.getSchemaVersion(), registryCounts: store.security.state().permissions.includes('families.view')?store.registration.counts():{families:0,livingMembers:0}, lifeEventsDemo: store.lifeEvents.enabled,financeDemo:store.finance.enabled,integrationsDemo:store.integrations.enabled,
   }));
   handle(CHANNELS.settings, settingsSchema, input => store.saveSettings(input));
   handle(CHANNELS.health, emptyRequest, () => store.checkStorage());

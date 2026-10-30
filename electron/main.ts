@@ -1,4 +1,9 @@
-import { app, BrowserWindow, dialog, protocol, session } from 'electron';
+import { BackupService } from './backup-service';
+import { activeWorkspace } from './workspace-path';
+import { registerSecurityIpc } from './security-ipc';
+import { createMockIntegrationClient,type IntegrationClient } from './integration-client';
+import { registerIntegrationsIpc } from './integrations-ipc';
+import { app, BrowserWindow, dialog, protocol, session, safeStorage, powerMonitor } from 'electron';
 import { mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
@@ -14,10 +19,14 @@ app.setName('Mosque Suite');
 // Keep development/test fixtures separate from the packaged preview's userData.
 const testProfile = !app.isPackaged && process.env.MOSQUE_TEST_PROFILE;
 if (testProfile && !/^test-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(testProfile)) throw new Error('Invalid test profile.');
-const financeDemo = !app.isPackaged && Boolean(testProfile || process.env.MOSQUE_FINANCE_DEMO === '1');
+const integrationsDemo = !app.isPackaged && Boolean(testProfile || process.env.MOSQUE_INTEGRATIONS_DEMO === '1');
+const financeDemo = !app.isPackaged && Boolean(testProfile || integrationsDemo || process.env.MOSQUE_FINANCE_DEMO === '1');
 const lifeEventsDemo = !app.isPackaged && Boolean(testProfile || financeDemo || process.env.MOSQUE_LIFE_EVENTS_DEMO === '1');
-if (!app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'Mosque Suite Development', testProfile || (financeDemo ? 'finance-demo' : lifeEventsDemo ? 'life-events-demo' : 'workspace')));
+if (!app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'Mosque Suite Development', testProfile || (integrationsDemo ? 'integrations-demo' : financeDemo ? 'finance-demo' : lifeEventsDemo ? 'life-events-demo' : 'workspace')));
 const development = !app.isPackaged && process.env.MOSQUE_DEV_URL === DEV_ORIGIN;
+let backups:BackupService|undefined;
+let backupTimer:ReturnType<typeof setInterval>|undefined;
+let integrationClient:IntegrationClient|undefined;
 let store: WorkspaceStore | undefined;
 let mainWindow: BrowserWindow | undefined;
 
@@ -31,11 +40,18 @@ else {
   void app.whenReady().then(async () => {
     try {
       mkdirSync(app.getPath('userData'), { recursive: true });
-      store = new WorkspaceStore(join(app.getPath('userData'), 'mosque-suite.sqlite3'), lifeEventsDemo,financeDemo);
+      const dataDir=activeWorkspace(app.getPath('userData'));
+      store = new WorkspaceStore(join(dataDir, 'mosque-suite.sqlite3'), lifeEventsDemo,financeDemo,integrationsDemo);
+      if(integrationsDemo){integrationClient=await createMockIntegrationClient(join(dataDir,'integration-service.sqlite3'),store.integrations.workspaceId);store.integrations.attach(integrationClient);}
+      backups=new BackupService(store,app.getPath('userData'),dataDir,{available:()=>safeStorage.isEncryptionAvailable(),seal:value=>safeStorage.encryptString(value),open:value=>safeStorage.decryptString(value)},integrationClient?.snapshot,()=>{app.relaunch();app.quit();});
+      backupTimer=setInterval(()=>void backups?.scheduled(),60000);
+      powerMonitor.on('lock-screen',()=>{store?.security.lock();printDocuments.clear();void backups?.clearPreview();});
+      powerMonitor.on('suspend',()=>{store?.security.lock();printDocuments.clear();void backups?.clearPreview();});
       const rendererRoot = join(__dirname, '../dist');
       const mimeTypes: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.woff': 'font/woff', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
       await protocol.handle('app', async request => {
         const printPage = request.method === 'GET' && printDocuments.get(new URL(request.url).pathname);
+        if(printPage){try{store!.security.require('data.export');}catch{return new Response('Locked',{status:403});}}
         if (printPage) return new Response(printPage, { headers: { 'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':CSP,'X-Content-Type-Options':'nosniff' } });
         const asset = resolveAsset(rendererRoot, request.url);
         if (!asset || request.method !== 'GET') return new Response('Not found', { status: 404 });
@@ -87,12 +103,14 @@ else {
         // In Electron this event's preventDefault permits the blocked unload.
         if (choice === 1) event.preventDefault();
       });
+      registerSecurityIpc(mainWindow,store,backups,development);
       registerIpc(mainWindow, store, {
         environment: app.isPackaged ? 'preview' : testProfile ? 'test' : 'development',
         version: app.getVersion(), canResetDemo: !app.isPackaged,
       }, development);
       registerLifeEventsIpc(mainWindow,store,development,rendererRoot);
       registerFinanceIpc(mainWindow,store,development,rendererRoot);
+      registerIntegrationsIpc(mainWindow,store,development);
       mainWindow.once('ready-to-show', () => mainWindow?.show());
       await mainWindow.loadURL(development ? `${DEV_ORIGIN}/` : `${APP_ORIGIN}/index.html`);
     } catch {
@@ -101,5 +119,5 @@ else {
     }
   });
   app.on('window-all-closed', () => app.quit());
-  app.on('will-quit', () => store?.close());
+  app.on('will-quit', () => {if(backupTimer)clearInterval(backupTimer);void backups?.dispose();void integrationClient?.close();store?.close();});
 }

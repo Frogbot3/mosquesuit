@@ -1,7 +1,9 @@
+import type { SecurityApi,SecurityErrorCode } from './security';
 import { z } from 'zod';
 import type { FamilyDraft, FamilyProfile, FamilyQuery, FamilySummary, MemberSummary, PageResult, RegistryErrorCode } from './registration';
 import type { LifeEventsApi, LifeEventErrorCode } from './life-events';
 import type { FinanceApi, FinanceErrorCode } from './finance';
+import type { IntegrationApi,IntegrationErrorCode } from './integrations';
 
 const plainText = (max: number) => z.string().trim().max(max).refine(
   value => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/u.test(value),
@@ -36,13 +38,14 @@ export interface Snapshot {
   registryCounts: { families: number; livingMembers: number };
   lifeEventsDemo: boolean;
   financeDemo: boolean;
+  integrationsDemo: boolean;
 }
 
-export type ErrorCode = 'VALIDATION' | 'FORBIDDEN' | 'CONFLICT' | 'STORAGE' | 'INTERNAL' | RegistryErrorCode | LifeEventErrorCode | FinanceErrorCode;
+export type ErrorCode = 'VALIDATION' | 'FORBIDDEN' | 'CONFLICT' | 'STORAGE' | 'INTERNAL' | RegistryErrorCode | LifeEventErrorCode | FinanceErrorCode | IntegrationErrorCode | SecurityErrorCode;
 export type Result<T> = { ok: true; data: T } | { ok: false; error: { code: ErrorCode; message: string } };
 
 // Deliberately no generic invoke, filesystem path, SQL, credentials, or event object.
-export interface DesktopApi extends LifeEventsApi, FinanceApi {
+export interface DesktopApi extends LifeEventsApi, FinanceApi,IntegrationApi,SecurityApi {
   getSnapshot: () => Promise<Result<Snapshot>>;
   saveSettings: (settings: Settings) => Promise<Result<Settings>>;
   checkStorage: () => Promise<Result<StorageHealth>>;

@@ -49,3 +49,7 @@ Use fictional data until the security and recovery gates pass. Before Phase 2/3 
 ## Phase 4 financial demo update
 
 Version 0.4.0 implements the offline accounting module in an isolated fictional workspace. Main-process simulated role permissions, immutable postings, audit/session identifiers and consistent unencrypted SQLite snapshots are implemented. These do not satisfy the production login, ward scope, encryption, recovery or signed-distribution gates. No online payment verification or messaging is present. See [Phase 4 accounting policies and limits](PHASE-4.md).
+
+## Phase 5 integration simulation update
+
+Version 0.5.0 adds the isolated integration profile, explicit guardian consent, offline approval queue, minimal synchronized data, signed verified mock payments, single-authority reconciliation, receipt delivery and scheduling. The standalone service owns provider test adapters and secrets. No real provider activation, public deployment or live transactions were authorized or performed. Staff authentication, secure hosted-service pairing, real provider acceptance, settlement/bank reconciliation, retention, encrypted paired recovery and signed distribution remain production gates. See PHASE-5.md.

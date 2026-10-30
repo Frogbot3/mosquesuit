@@ -1,3 +1,4 @@
+import { securityMigration } from './security-migration';
 import { integrationsMigration } from './integrations-migration';
 import { createHash } from 'node:crypto';
 import type Database from 'better-sqlite3';
@@ -52,7 +53,7 @@ export const migrations: Migration[] = [{
       ('ward-4','W4','Ward 4','വാർഡ് 4',4);
     INSERT INTO audit_events (kind) VALUES ('workspace.created');
   `,
-}, registrationMigration, lifeEventsMigration, financeMigration, integrationsMigration];
+}, registrationMigration, lifeEventsMigration, financeMigration, integrationsMigration,securityMigration];
 
 export function checksum(migration: Migration): string {
   return createHash('sha256').update(`${migration.version}:${migration.name}:${migration.sql}`).digest('hex');

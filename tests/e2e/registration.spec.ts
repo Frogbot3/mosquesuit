@@ -84,7 +84,7 @@ test('registers a guardian and three members, restarts, edits, and searches pers
   await expect(page.getByText('Fictional teacher', { exact: true })).toBeVisible();
   const family = await page.evaluate(id => window.mosque!.getFamily({ id }), id);
   expect(family).toMatchObject({ ok: true, data: { totals: { living: 4, male: 2, female: 2 }, revision: 1 } });
-  expect(await page.evaluate(() => window.mosque!.checkStorage())).toMatchObject({ ok: true, data: { integrity: 'ok', foreignKeys: true, schemaVersion: 4 } });
+  expect(await page.evaluate(() => window.mosque!.checkStorage())).toMatchObject({ ok: true, data: { integrity: 'ok', foreignKeys: true, schemaVersion: 5 } });
 });
 
 test('rejects duplicate and invalid registration input while preserving saved data and the unsaved form', async () => {

@@ -1,3 +1,4 @@
+import { SecurityError } from '../shared/security';
 import { ipcMain,type BrowserWindow } from 'electron';
 import { z } from 'zod';
 import { FINANCE_CHANNELS as C } from '../shared/finance-channels';
@@ -12,7 +13,7 @@ export function registerFinanceIpc(window:BrowserWindow,store:WorkspaceStore,dev
     ipcMain.handle(channel,async(event,input:unknown):Promise<Result<T>>=>{
       if(event.sender!==window.webContents||!event.senderFrame||event.senderFrame!==event.sender.mainFrame||!isTrustedDocument(event.senderFrame.url,development))return {ok:false,error:{code:'FORBIDDEN',message:'Request denied.'}};
       try{store.finance.require();const parsed=schema.safeParse(input);if(!parsed.success)return {ok:false,error:{code:'VALIDATION',message:'Check the supplied values.'}};return {ok:true,data:await run(parsed.data)};}
-      catch(error){return {ok:false,error:{code:error instanceof FinanceError?error.code:'STORAGE',message:'The financial operation could not be completed.'}};}
+      catch(error){return {ok:false,error:{code:error instanceof SecurityError||error instanceof FinanceError?error.code:'STORAGE',message:'The financial operation could not be completed.'}};}
     });
   }
   handle(C.getFinanceSetup,emptyRequest,()=>store.finance.setup());

@@ -6,9 +6,9 @@ import type { TranslationKey } from '../lib/i18n';
 import { lifeText } from '../../shared/life-labels';
 
 const planned = [
-  ['notifications', Bell, 6], ['documents', Files, 5], ['imports', ArrowDownUp, 3], ['backup', Database, 7], ['staff', UserRoundCog, 7],
+  ['documents', Files, 5], ['imports', ArrowDownUp, 3], ['backup', Database, 7], ['staff', UserRoundCog, 7],
 ] as const;
-const labels: Record<string, TranslationKey> = { '/': 'dashboard', '/wards': 'wards', '/families': 'families', '/members': 'members', '/settings': 'settings', '/activity': 'activity', '/payments':'payments', '/finance':'payments', '/donations':'donations', '/reports':'reports' };
+const labels: Record<string, TranslationKey> = { '/notifications': 'notifications', '/integrations': 'notifications', '/': 'dashboard', '/wards': 'wards', '/families': 'families', '/members': 'members', '/settings': 'settings', '/activity': 'activity', '/payments':'payments', '/finance':'payments', '/donations':'donations', '/reports':'reports' };
 
 export function Layout() {
   const { snapshot, save, t, notify, dirty } = useWorkspace();
@@ -37,6 +37,7 @@ export function Layout() {
         <NavLink to="/payments" className="nav-link"><WalletCards/><span>{t('payments')}</span></NavLink>
         <NavLink to="/donations" className="nav-link"><Coins/><span>{t('donations')}</span></NavLink>
         <NavLink to="/reports" className="nav-link"><ChartNoAxesCombined/><span>{t('reports')}</span></NavLink>
+        <NavLink to="/notifications" className="nav-link"><Bell/><span>{t('notifications')}</span></NavLink>
         <div className="nav-section-label">{t('workspace')} <span>{t('later')}</span></div>
         {planned.map(([key, Icon, phase]) => <div key={key} className="nav-link planned" aria-disabled="true" title={`${t('later')} · Phase ${phase}`}><Icon /><span>{t(key)}</span></div>)}
         <div className="nav-divider" />

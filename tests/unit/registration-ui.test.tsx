@@ -1,3 +1,5 @@
+import { securityApiMocks } from '../fixtures/security-api';
+import { integrationMocks } from '../fixtures/integrations-api';
 // @vitest-environment jsdom
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -13,10 +15,10 @@ function setup() {
   const snapshot: Snapshot = {
     settings: { name: 'Fictional Mosque', nameMl: '', address: '', contact: '', locale: 'en', theme: 'light', revision: 0 },
     wards: [{ id: 'ward-1', code: 'W1', name: 'Ward 1', nameMl: 'വാർഡ് 1', active: true }],
-    activity: [], environment: 'test', version: '0.4.0', canResetDemo: true, schemaVersion: 4, registryCounts: { families: 0, livingMembers: 0 }, lifeEventsDemo: false,financeDemo:false,
+    activity: [], environment: 'test', version: '0.5.0', canResetDemo: true, schemaVersion: 5, registryCounts: { families: 0, livingMembers: 0 }, lifeEventsDemo: false,financeDemo:false,integrationsDemo:false,
   };
   window.mosque = {
-    ...lifeApiMocks(),...financeApiMocks(),
+    ...lifeApiMocks(),...financeApiMocks(),...integrationMocks(),...securityApiMocks(),
     getSnapshot: vi.fn().mockResolvedValue({ ok: true, data: snapshot }), saveSettings: vi.fn(), checkStorage: vi.fn(), resetDemo: vi.fn(),
     listFamilies: vi.fn(), getFamily: vi.fn(), listMembers: vi.fn(), getMember: vi.fn(),
     saveFamily: vi.fn().mockResolvedValue({ ok: false, error: { code: 'DUPLICATE_FAMILY', message: 'Duplicate' } }),

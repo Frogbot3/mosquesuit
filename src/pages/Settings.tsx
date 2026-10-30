@@ -1,3 +1,4 @@
+import { integrationText } from '../../shared/integration-labels';
 import { useEffect, useState } from 'react';
 import { Link,useBlocker, useBeforeUnload } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -42,7 +43,7 @@ export function SettingsPage() {
     catch { notify(t('errorTitle'), true); }
     finally { setResetting(false); }
   }
-  return <>
+  return <><p><Link className="button secondary" to="/integrations/settings">{integrationText(snapshot.settings.locale,'integrations')}</Link></p>
     <PageHeading title={t('settingsHeading')} description={t('settingsSub')} />
     {snapshot.financeDemo&&<p className="life-links"><Link className="button secondary" to="/finance/settings">{financeText(snapshot.settings.locale,'financeSettings')} · {financeText(snapshot.settings.locale,'logo')}</Link></p>}
     <div className="settings-layout"><form onSubmit={handleSubmit(submit)} className="panel settings-form" noValidate>

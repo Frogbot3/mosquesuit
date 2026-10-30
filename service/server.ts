@@ -1,14 +1,16 @@
+import { paymentWebhook,metaWebhook } from './webhooks';
 import { createServer,type IncomingMessage,type ServerResponse } from 'node:http';
 import { createServer as createHttpsServer,type ServerOptions } from 'node:https';
 import { createHmac,randomUUID,timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { IntegrationError,mockConfigSchema,simulateSchema } from '../shared/integrations';
-import { IntegrationService,digest,verifySignature } from './engine';
+import { IntegrationService,digest } from './engine';
 import type { MockProviders } from './mock-providers';
 const idRequest=z.object({id:z.string().max(160).min(1)}).strict();
 const escaped=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-export async function startIntegrationServer(options:{engine:IntegrationService;deviceToken:string;adminToken:string;webhookSecret:string;mock?:MockProviders;tls?:ServerOptions;port?:number;verifyToken?:string}){
- const {engine}=options;const deviceHash=Buffer.from(digest(options.deviceToken),'hex');const adminHash=Buffer.from(digest(options.adminToken),'hex');if(options.deviceToken.length<32||options.adminToken.length<32)throw new Error('Strong service credentials required');
+export async function startIntegrationServer(options:{engine:IntegrationService;deviceToken:string;adminToken:string;webhookSecret:string;mock?:MockProviders;tls?:ServerOptions;port?:number;verifyToken?:string;metaAppSecret?:string;metaSenderId?:string;metaWabaId?:string;publicBaseUrl?:string}){
+ if(options.publicBaseUrl&&(!options.publicBaseUrl.startsWith('https://')||new URL(options.publicBaseUrl).origin!==options.publicBaseUrl))throw new Error('An HTTPS origin is required');
+ const {engine}=options;const deviceHash=Buffer.from(digest(options.deviceToken),'hex');const adminHash=Buffer.from(digest(options.adminToken),'hex');if(options.deviceToken.length<32||options.adminToken.length<32||options.webhookSecret.length<32||options.adminToken===options.deviceToken)throw new Error('Strong service credentials required');
  let requests=0,windowStart=Date.now();let lastMockEvent:Buffer|null=null;
  async function handler(req:IncomingMessage,res:ServerResponse){res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'");
   const send=(status:number,data:unknown)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));};
@@ -26,7 +28,7 @@ export async function startIntegrationServer(options:{engine:IntegrationService;
    switch(url.pathname){
     case '/sync':result=engine.synchronize(input);break;
     case '/changes':z.object({}).strict().parse(input);result=engine.changes();break;
-    case '/dispatch':z.object({}).strict().parse(input);await engine.dispatch();result=engine.changes();break;
+    case '/dispatch':z.object({}).strict().parse(input);engine.runSchedules();await engine.dispatch();result=engine.changes();break;
     case '/links/create':result=await engine.createLink(input);break;
     case '/links/cancel':await engine.cancelLink(idRequest.parse(input).id);break;
     case '/ack':engine.acknowledge(input);break;
@@ -40,16 +42,14 @@ export async function startIntegrationServer(options:{engine:IntegrationService;
     }
     case '/webhooks/payment':{
      const signature=String(req.headers['x-razorpay-signature']??'');if(options.mock){await engine.webhook(raw,signature);break;}
-     if(!verifySignature(raw,signature,options.webhookSecret))throw new IntegrationError('INTEGRATION_SIGNATURE');
-     const payload=z.object({event:z.literal('payment_link.paid'),created_at:z.number().int(),payload:z.object({payment_link:z.object({entity:z.object({id:z.string()})}),payment:z.object({entity:z.object({id:z.string()})})})}).parse(input);
-     const link=engine.links().find(l=>l.providerId===payload.payload.payment_link.entity.id);if(!link)throw new IntegrationError('INTEGRATION_INVALID');const eventId=String(req.headers['x-razorpay-event-id']??'');if(!eventId)throw new IntegrationError('INTEGRATION_INVALID');const normalized=Buffer.from(JSON.stringify({eventId,event:'capture',createdAt:payload.created_at*1000,linkId:link.id,paymentId:payload.payload.payment.entity.id,refundId:''}));await engine.webhook(normalized,sign(normalized));break;
+     await paymentWebhook(engine,raw,signature,String(req.headers['x-razorpay-event-id']??''),options.webhookSecret);break;
     }
-    case '/webhooks/meta':{const signature=String(req.headers['x-hub-signature-256']??'');if(options.mock){engine.deliveryWebhook(raw,signature);break;}if(!verifySignature(raw,signature.replace(/^sha256=/,''),options.webhookSecret))throw new IntegrationError('INTEGRATION_SIGNATURE');const data=z.object({entry:z.array(z.object({changes:z.array(z.object({value:z.object({statuses:z.array(z.object({id:z.string(),status:z.enum(['sent','delivered','read','failed'])})).optional()})}))}))}).parse(input);for(const e of data.entry)for(const c of e.changes)for(const status of c.value.statuses??[]){const body=Buffer.from(JSON.stringify({id:status.id,status:status.status==='read'?'delivered':status.status}));try{engine.deliveryWebhook(body,sign(body));}catch(error){if(!(error instanceof IntegrationError&&error.code==='INTEGRATION_REPLAY'))throw error;}}break;}
+    case '/webhooks/meta':{const signature=String(req.headers['x-hub-signature-256']??'');if(options.mock){engine.deliveryWebhook(raw,signature);break;}metaWebhook(engine,raw,signature,{appSecret:options.metaAppSecret??'',wabaId:options.metaWabaId??'',senderId:options.metaSenderId??'',internalSecret:options.webhookSecret});break;}
     default:return send(404,{ok:false,code:'INTEGRATION_INVALID'});
    }send(200,{ok:true,data:result});
   }catch(error){const code=error instanceof IntegrationError?error.code:error instanceof z.ZodError||error instanceof SyntaxError?'INTEGRATION_INVALID':'INTEGRATION_STATE';if(code==='INTEGRATION_REPLAY'&&req.url?.startsWith('/webhooks/'))send(200,{ok:true,data:{duplicate:true}});else send(code==='INTEGRATION_AUTH'||code==='INTEGRATION_SIGNATURE'?401:code==='INTEGRATION_REPLAY'||code==='INTEGRATION_CONFLICT'?409:400,{ok:false,code});}
  }
  if(!options.mock&&!options.tls)throw new Error('TLS is required for provider test mode');
  const server=options.tls?createHttpsServer(options.tls,(req,res)=>void handler(req,res)):createServer((req,res)=>void handler(req,res));server.requestTimeout=20000;server.headersTimeout=10000;
- await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(options.port??0,'127.0.0.1',resolve);});const address=server.address();if(!address||typeof address==='string')throw new Error('No listener');return {url:`${options.tls?'https':'http'}://127.0.0.1:${address.port}`,close:()=>new Promise<void>((resolve,reject)=>{server.close(error=>error?reject(error):resolve());server.closeIdleConnections();})};
+ await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(options.port??0,'127.0.0.1',resolve);});const address=server.address();if(!address||typeof address==='string')throw new Error('No listener');const url=`${options.tls?'https':'http'}://127.0.0.1:${address.port}`;engine.receiptBaseUrl=options.publicBaseUrl??url;return {url,close:()=>new Promise<void>((resolve,reject)=>{server.close(error=>error?reject(error):resolve());server.closeIdleConnections();})};
 }

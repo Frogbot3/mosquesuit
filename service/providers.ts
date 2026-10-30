@@ -1,4 +1,5 @@
-// Server-only adapters. This file is deliberately excluded from Electron builds.
+// Real provider adapters are used only by the separately built service entry.
+// Electron imports the shared error/type definitions; unused adapters are removed.
 import { z } from 'zod';
 export interface GatewayLink {id:string;url:string;status:string}
 export interface GatewayPayment {id:string;linkId:string;amountPaise:number;currency:string;status:string;createdAt:number}
@@ -23,8 +24,26 @@ export class RazorpayTestAdapter implements PaymentProvider {
  async refund(key:string,paymentId:string,amountPaise:number){const p=refundShape.parse(await this.call(`payments/${encodeURIComponent(paymentId)}/refund`,{amount:amountPaise,receipt:key,notes:{request_id:key}}));return {id:p.id,paymentId:p.payment_id,amountPaise:p.amount,status:p.status,createdAt:p.created_at*1000};}
  async fetchRefund(id:string){const p=refundShape.parse(await this.call(`refunds/${encodeURIComponent(id)}`));return {id:p.id,paymentId:p.payment_id,amountPaise:p.amount,status:p.status,createdAt:p.created_at*1000};}
 }
+export interface ApprovedMetaTemplate {name:string;language:string;locale:'en'|'ml';body:string}
 export class MetaCloudAdapter implements MessageProvider {
- constructor(private readonly config:{token:string;senderId:string;graphVersion:string;approved:Record<string,{language:string;body:string;parameters:string[]}>;allowedTestRecipients:string[]},private readonly request:typeof fetch=fetch){if(!/^v\d+\.\d+$/.test(config.graphVersion)||!/^\d+$/.test(config.senderId)||!config.token)throw new Error('Backend configuration required');}
- async send(d:{jobId:string;phone:string;template:string;language:string;body:string}){const approved=this.config.approved[d.template];if(!approved||approved.language!==d.language||approved.body!==d.body||!this.config.allowedTestRecipients.includes(d.phone))throw new DispatchError('rejected');let response:Response;try{response=await this.request(`https://graph.facebook.com/${this.config.graphVersion}/${this.config.senderId}/messages`,{method:'POST',headers:{Authorization:`Bearer ${this.config.token}`,'Content-Type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to:d.phone,type:'template',template:{name:d.template,language:{code:d.language},components:[{type:'body',parameters:approved.parameters.map(text=>({type:'text',text}))}]},biz_opaque_callback_data:d.jobId}),redirect:'error',signal:AbortSignal.timeout(15000)});}catch{throw new DispatchError('uncertain');}if(response.status===429)throw new DispatchError('rate_limit');if(response.status>=500)throw new DispatchError('uncertain');if(!response.ok)throw new DispatchError('rejected');try{return {id:z.object({messages:z.array(z.object({id:z.string()})).min(1)}).parse(await response.json()).messages[0].id};}catch{throw new DispatchError('uncertain');}}
+ constructor(private readonly config:{token:string;senderId:string;graphVersion:string;approved:Record<string,ApprovedMetaTemplate>;allowedTestRecipients:string[]},private readonly request:typeof fetch=fetch){if(!/^v\d+\.\d+$/.test(config.graphVersion)||!/^\d+$/.test(config.senderId)||!config.token)throw new Error('Backend configuration required');}
+ async send(d:{jobId:string;phone:string;template:string;language:string;body:string}){
+  const approved=this.config.approved[d.template];if(!approved||approved.locale!==d.language||!this.config.allowedTestRecipients.includes(d.phone))throw new DispatchError('rejected');
+  // The server-owned manifest binds a local template to the provider-approved
+  // name, language and exact static text. Only approved text slots may vary.
+  const slots=[...approved.body.matchAll(/\{\{(.*?)\}\}/g)];if(slots.some(m=>!['mosque','amount','period','payment_link','receipt_number','receipt_link'].includes(m[1])))throw new DispatchError('rejected');
+  const escape=(s:string)=>s.replace(/[.*+?^$\{\}()|[\]\\]/g,'\\$&');let expression='^',offset=0;
+  for(const slot of slots){expression+=escape(approved.body.slice(offset,slot.index))+'([\\s\\S]{0,500}?)';offset=slot.index!+slot[0].length;}
+  expression+=escape(approved.body.slice(offset))+'$';const match=new RegExp(expression,'u').exec(d.body);if(!match)throw new DispatchError('rejected');
+  const parameters=match.slice(1);let response:Response;
+  try{response=await this.request('https://graph.facebook.com/'+this.config.graphVersion+'/'+this.config.senderId+'/messages',{method:'POST',headers:{Authorization:'Bearer '+this.config.token,'Content-Type':'application/json'},body:JSON.stringify({messaging_product:'whatsapp',to:d.phone,type:'template',template:{name:approved.name,language:{code:approved.language},components:parameters.length?[{type:'body',parameters:parameters.map(text=>({type:'text',text}))}]:[]},biz_opaque_callback_data:d.jobId}),redirect:'error',signal:AbortSignal.timeout(15000)});}catch{throw new DispatchError('uncertain');}
+  if(response.status===429)throw new DispatchError('rate_limit');if(response.status>=500)throw new DispatchError('uncertain');if(!response.ok)throw new DispatchError('rejected');
+  try{return {id:z.object({messages:z.array(z.object({id:z.string()})).min(1)}).parse(await response.json()).messages[0].id};}catch{throw new DispatchError('uncertain');}
+ }
 }
 export class DisabledAdapter implements MessageProvider {async send():Promise<{id:string}>{throw new DispatchError('rejected');}}
+// Future channels accept a channel-appropriate address. They must go through
+// the same consent/approval queue when implemented; neither is routed today.
+export interface OptionalNotificationAdapter {readonly channel:'email'|'sms';readonly enabled:boolean;send(input:{jobId:string;to:string;language:'en'|'ml';body:string}):Promise<{id:string}>}
+export class DisabledChannelAdapter implements OptionalNotificationAdapter {readonly enabled=false;constructor(readonly channel:'email'|'sms'){}async send():Promise<{id:string}>{throw new DispatchError('rejected');}}
+export const optionalNotificationAdapters={email:new DisabledChannelAdapter('email'),sms:new DisabledChannelAdapter('sms')};

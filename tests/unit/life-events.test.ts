@@ -105,7 +105,7 @@ describe('life-event storage',()=>{
     })();db.close();const store=open(file);
     expect(store.registration.get({id:preservedFamily})).toMatchObject({guardianMemberId:preservedMember,needsGuardian:false,totals:{living:1},members:[expect.objectContaining({nameMl:'മാതൃകാ രക്ഷിതാവ്'})]});
     const {marriage}=fixture(store);const saved=store.lifeEvents.save({...marriage,remarks:'സാങ്കൽപ്പിക വിവരം'});store.close();
-    const reopened=open(file);expect(reopened.getSettings().name).toBe('Fictional existing mosque');expect(reopened.lifeEvents.get({id:saved.id}).remarks).toBe('സാങ്കൽപ്പിക വിവരം');expect(reopened.getSchemaVersion()).toBe(4);
+    const reopened=open(file);expect(reopened.getSettings().name).toBe('Fictional existing mosque');expect(reopened.lifeEvents.get({id:saved.id}).remarks).toBe('സാങ്കൽപ്പിക വിവരം');expect(reopened.getSchemaVersion()).toBe(5);
   });
   it('searches bilingual records with date/status filters and escapes output markup',()=>{
     const store=open();const {marriage}=fixture(store);const event=store.lifeEvents.save({...marriage,remarks:'<script>bad()</script>'});

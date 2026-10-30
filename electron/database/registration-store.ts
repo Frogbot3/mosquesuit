@@ -24,7 +24,7 @@ const memberFields = ['name', 'nameMl', 'relationship', 'gender', 'dob', 'father
 const literalLike = (value: string) => `%${value.replace(/[\\%_]/g, char => `\\${char}`)}%`;
 
 export class RegistrationStore {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: Database.Database,private readonly scope:()=>string[]|null=()=>null) {}
 
   private event(familyId: string, action: HistoryAction, time: string, memberId: string | null = null, fields: string[] = []) {
     this.db.prepare('INSERT INTO registration_history(family_id,member_id,action,fields,created_at) VALUES(?,?,?,?,?)').run(familyId, memberId, action, JSON.stringify(fields), time);
@@ -134,11 +134,11 @@ export class RegistrationStore {
 
   list(input: unknown): PageResult<FamilySummary> {
     const query = familyQuerySchema.parse(input);
-    const where = `WHERE (@wardId='' OR f.ward_id=@wardId) AND (@search='' OR f.family_number LIKE @pattern ESCAPE '\\'
+    const where = `WHERE (@allWards=1 OR f.ward_id IN(SELECT value FROM json_each(@allowedWards))) AND (@wardId='' OR f.ward_id=@wardId) AND (@search='' OR f.family_number LIKE @pattern ESCAPE '\\'
       OR (w.code || '/' || f.family_number) LIKE @pattern ESCAPE '\\' OR f.id LIKE @pattern ESCAPE '\\'
       OR f.house_name LIKE @pattern ESCAPE '\\' OR f.house_name_ml LIKE @pattern ESCAPE '\\'
       OR g.name LIKE @pattern ESCAPE '\\' OR g.name_ml LIKE @pattern ESCAPE '\\' OR g.phone LIKE @pattern ESCAPE '\\')`;
-    const params = { ...query, pattern: literalLike(query.search) };
+    const allowed=this.scope();const params = { ...query, pattern: literalLike(query.search),allWards:allowed===null?1:0,allowedWards:JSON.stringify(allowed??[]) };
     const from = 'FROM families f JOIN wards w ON w.id=f.ward_id JOIN members g ON g.id=f.guardian_member_id';
     const total = (this.db.prepare(`SELECT COUNT(*) AS n ${from} ${where}`).get(params) as { n: number }).n;
     const page = Math.min(query.page, Math.max(1, Math.ceil(total / query.pageSize)));
@@ -153,9 +153,9 @@ export class RegistrationStore {
 
   listMembers(input: unknown): PageResult<MemberSummary> {
     const query: FamilyQuery = familyQuerySchema.parse(input);
-    const params = { ...query, pattern: literalLike(query.search) };
+    const allowed=this.scope();const params = { ...query, pattern: literalLike(query.search),allWards:allowed===null?1:0,allowedWards:JSON.stringify(allowed??[]) };
     const from = `FROM members m JOIN families f ON f.id=m.family_id JOIN wards w ON w.id=f.ward_id`;
-    const where = `WHERE m.archived_at IS NULL AND (@wardId='' OR f.ward_id=@wardId) AND
+    const where = `WHERE (@allWards=1 OR f.ward_id IN(SELECT value FROM json_each(@allowedWards))) AND m.archived_at IS NULL AND (@wardId='' OR f.ward_id=@wardId) AND
       (@search='' OR m.name LIKE @pattern ESCAPE '\\' OR m.name_ml LIKE @pattern ESCAPE '\\'
       OR m.phone LIKE @pattern ESCAPE '\\' OR m.id LIKE @pattern ESCAPE '\\' OR (w.code || '/' || f.family_number) LIKE @pattern ESCAPE '\\')`;
     const total = (this.db.prepare(`SELECT COUNT(*) AS n ${from} ${where}`).get(params) as { n: number }).n;
@@ -177,9 +177,10 @@ export class RegistrationStore {
   }
 
   counts(): { families: number; livingMembers: number } {
+    const scope=this.scope();const args={all:scope===null?1:0,wards:JSON.stringify(scope??[])};
     return {
-      families: (this.db.prepare('SELECT COUNT(*) AS n FROM families').get() as { n: number }).n,
-      livingMembers: (this.db.prepare("SELECT COUNT(*) AS n FROM members WHERE archived_at IS NULL AND life_status='living'").get() as { n: number }).n,
+      families: (this.db.prepare('SELECT COUNT(*) AS n FROM families WHERE @all=1 OR ward_id IN(SELECT value FROM json_each(@wards))').get(args) as { n: number }).n,
+      livingMembers: (this.db.prepare("SELECT COUNT(*) AS n FROM members m JOIN families f ON f.id=m.family_id WHERE m.archived_at IS NULL AND m.life_status='living' AND (@all=1 OR f.ward_id IN(SELECT value FROM json_each(@wards)))").get(args) as { n: number }).n,
     };
   }
 }
