@@ -1,4 +1,5 @@
-import { BrowserWindow, dialog, type BrowserWindow as Window } from 'electron';
+import { externalDestination } from './secure-files';
+import { app,BrowserWindow, dialog, type BrowserWindow as Window } from 'electron';
 import { open, readdir, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -34,22 +35,22 @@ export async function attachDocument(window: Window, store: WorkspaceStore, requ
   } finally {await file.close();}
 }
 export async function exportDocument(window: Window, store: WorkspaceStore, request: {id:string}) {
-  const document = store.lifeEvents.document(request);
+  store.security.require('data.export');const document = store.lifeEvents.document(request);
   const choice = await dialog.showSaveDialog(window,{title:lifeText(store.getSettings().locale,'exportDocument'),defaultPath:document.name});
-  if(choice.canceled || !choice.filePath) return false; await writeFile(choice.filePath,document.content); return true;
+  if(choice.canceled || !choice.filePath) return false;const destination=await externalDestination(choice.filePath,app.getPath('userData'));store.security.require('data.export');await writeFile(destination,document.content);store.security.audit('export.attachment','document',request.id);return true;
 }
 export async function outputEvent(window: Window, store: WorkspaceStore, rendererRoot: string, request: {id:string;revision:number;format:'pdf'|'print'}) {
-  store.lifeEvents.requireDemo(); const event = store.lifeEvents.get({id:request.id}); if(event.revision!==request.revision) throw new LifeEventError('EVENT_STALE');
+  store.security.require('data.export');store.lifeEvents.requireDemo(); const event = store.lifeEvents.get({id:request.id}); if(event.revision!==request.revision) throw new LifeEventError('EVENT_STALE');
   const css = (await readdir(join(rendererRoot,'assets'))).find(file=>/^index-.*\.css$/.test(file)); if(!css) throw new Error('Build assets required');
   let destination: string | undefined;
-  if(request.format==='pdf') { const result = await dialog.showSaveDialog(window,{title:lifeText(store.getSettings().locale,'savePdf'),defaultPath:`Demo-${event.kind}-${event.number.replace(/[^A-Za-z0-9-]/g,'-')}.pdf`,filters:[{name:'PDF',extensions:['pdf']}]}); if(result.canceled || !result.filePath) return false; destination=result.filePath; }
+  if(request.format==='pdf') { const result = await dialog.showSaveDialog(window,{title:lifeText(store.getSettings().locale,'savePdf'),defaultPath:`Demo-${event.kind}-${event.number.replace(/[^A-Za-z0-9-]/g,'-')}.pdf`,filters:[{name:'PDF',extensions:['pdf']}]}); if(result.canceled || !result.filePath) return false; destination=await externalDestination(result.filePath,app.getPath('userData')); }
   const token = `/print/${randomUUID()}`; printDocuments.set(token,eventPaper(event,store.getSettings(),`app://mosque/assets/${css}`));
   const paper = new BrowserWindow({show:false,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true,devTools:false}});
   paper.webContents.setWindowOpenHandler(()=>({action:'deny'})); paper.webContents.on('will-navigate',event=>event.preventDefault());
   try {
     await paper.loadURL(`app://mosque${token}`); await paper.webContents.executeJavaScript('document.fonts.ready.then(() => true)');
-    if(destination) { const pdf = await paper.webContents.printToPDF({pageSize:'A4',printBackground:true,preferCSSPageSize:true}); await writeFile(destination,pdf); }
-    else await new Promise<void>((resolve,reject)=>paper.webContents.print({silent:false,printBackground:true},(success,reason)=>success?resolve():reject(new Error(reason))));
-    return true;
+    if(destination) { const pdf = await paper.webContents.printToPDF({pageSize:'A4',printBackground:true,preferCSSPageSize:true}); store.security.require('data.export');await writeFile(destination,pdf); }
+    else {store.security.require('data.export');await new Promise<void>((resolve,reject)=>paper.webContents.print({silent:false,printBackground:true},(success,reason)=>success?resolve():reject(new Error(reason))));}
+    store.security.audit('export.life_event','lifeEvent',request.id);return true;
   } finally { printDocuments.delete(token); paper.destroy(); }
 }

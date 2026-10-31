@@ -1,0 +1,194 @@
+.access-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg, #f3f5f3);
+  padding: 28px;
+}
+.access-card {
+  width: min(100%, 520px);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #dce3df);
+  border-radius: 20px;
+  padding: 36px;
+  box-shadow: 0 12px 40px #143b2520;
+}
+.access-card header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--green, #145b40);
+}
+.access-card .language-control {
+  margin-left: auto;
+}
+.access-card h1 {
+  font-size: 26px;
+  margin-top: 28px;
+}
+.access-card p {
+  line-height: 1.7;
+}
+.access-card fieldset,
+.security-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+.access-card .text-link {
+  margin-top: 22px;
+}
+.access-card .button {
+  justify-content: center;
+}
+.security-form {
+  display: grid;
+  gap: 20px;
+}
+.security-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 20px;
+}
+.security-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+.security-section {
+  margin-top: 22px;
+}
+.security-section .panel {
+  padding: 24px;
+}
+.security-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.security-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 15px;
+}
+.security-summary dt {
+  font-size: 13px;
+}
+.security-summary dd {
+  margin: 5px 0;
+  font-weight: 600;
+}
+.security-table td {
+  overflow-wrap: anywhere;
+  max-width: 300px;
+}
+.security-form .field input,
+.access-card .field input {
+  width: 100%;
+}
+.security-warning {
+  border-left: 4px solid #a06719;
+  padding: 14px;
+  background: #fff6dd;
+  color: #60400f;
+  border-radius: 8px;
+}
+.security-grants {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.security-grants span {
+  padding: 5px 9px;
+  background: var(--bg, #f3f5f3);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.toolbar .session-name {
+  font-size: 12px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.security-form input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+html[data-theme="dark"] .access-screen {
+  background: #111c18;
+}
+html[data-theme="dark"] .access-card {
+  background: #192a23;
+  color: #e2eee6;
+}
+html[data-theme="dark"] .security-warning {
+  background: #3d321b;
+  color: #ffdfa3;
+}
+@media (max-width: 600px) {
+  .access-card {
+    padding: 22px;
+  }
+  .toolbar .session-name {
+    display: none;
+  }
+  .security-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.topbar {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.toolbar {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 14px;
+  min-width: 0;
+}
+.breadcrumb {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.toolbar .text-link {
+  white-space: nowrap;
+}
+@media (max-width: 1100px) {
+  .toolbar .session-name {
+    display: none;
+  }
+  .toolbar {
+    gap: 10px;
+  }
+}
+@media (max-width: 600px) {
+  .toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .topbar {
+    gap: 8px;
+  }
+}
+
+.security-table {
+  position: relative;
+  max-width: 100%;
+  min-width: 0;
+}
+.security-table table {
+  min-width: 760px;
+}
+.security-table th,
+.security-table td {
+  overflow-wrap: normal;
+}
+.security-table td small {
+  overflow-wrap: anywhere;
+}

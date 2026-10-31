@@ -1,6 +1,6 @@
 import { describe,it,expect,vi } from 'vitest';
 import type { BrowserWindow } from 'electron';
-import { WorkspaceStore } from '../../electron/database/store';
+import { WorkspaceStore } from '../fixtures/authenticated-store';
 import { CHANNELS } from '../../shared/channels';
 const handlers=vi.hoisted(()=>new Map<string,(event:unknown,input:unknown)=>Promise<unknown>>());
 vi.mock('electron',()=>({ipcMain:{handle:(channel:string,handler:(event:unknown,input:unknown)=>Promise<unknown>)=>handlers.set(channel,handler)}}));

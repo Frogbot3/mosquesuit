@@ -1,3 +1,4 @@
+import { auditSummary } from '../audit-summary';
 import type Database from 'better-sqlite3';
 import { createHash, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -21,7 +22,7 @@ export class FinanceStore {
   }
   private startSession(role:FinanceRole){this.session={id:randomUUID(),role,fictional:true};this.db.prepare('INSERT INTO financial_sessions(id,role,created_at) VALUES(?,?,?)').run(this.session.id,role,now());}
   setRole(input:unknown){this.require();const {role}=financeRoleSchema.parse(input);this.db.transaction(()=>{this.startSession(role);this.audit('session.started',this.session.id,{role});})();return this.session;}
-  private audit(action:string,entityId:string,details:unknown={}){this.db.prepare('INSERT INTO transaction_audit_log(action,entity_id,session_id,details,created_at) VALUES(?,?,?,?,?)').run(action,entityId,this.session.id,JSON.stringify(details),now());}
+  private audit(action:string,entityId:string,details:unknown={}){this.db.prepare('INSERT INTO transaction_audit_log(action,entity_id,session_id,details,created_at) VALUES(?,?,?,?,?)').run(action,entityId,this.session.id,auditSummary(details),now());}
   private command<T extends {key:string},R>(role:FinanceRole,operation:string,schema:z.ZodType<T>,input:unknown,perform:(data:T)=>R):R {
     this.require(role);const data=schema.parse(input);const hash=createHash('sha256').update(JSON.stringify(data)).digest('hex');
     try{return this.db.transaction(()=>{
@@ -39,7 +40,7 @@ export class FinanceStore {
     }
   }
   setup(){this.require();return {session:this.session,plans:financePlans(this.db),categories:financeCategories(this.db),funds:financeFunds(this.db),config:financeConfig(this.db),pendingExpenses:pendingExpenses(this.db)};}
-  auditHistory():FinanceAudit[]{this.require();return this.db.prepare('SELECT a.id,a.action,a.entity_id AS entityId,a.session_id AS sessionId,s.role,a.details,a.created_at AS createdAt FROM transaction_audit_log a JOIN financial_sessions s ON s.id=a.session_id ORDER BY a.id DESC LIMIT 500').all() as FinanceAudit[];}
+  auditHistory():FinanceAudit[]{this.require();return (this.db.prepare('SELECT a.id,a.action,a.entity_id AS entityId,a.session_id AS sessionId,s.role,a.details,a.created_at AS createdAt FROM transaction_audit_log a JOIN financial_sessions s ON s.id=a.session_id ORDER BY a.id DESC LIMIT 500').all() as FinanceAudit[]).map(row=>({...row,details:'{}'}));}
   private household(id:string):Household {
     const family=this.db.prepare(`SELECT f.id,f.ward_id AS wardId,w.code||'/'||f.family_number AS familyCode,trim(f.house_name||' '||f.house_name_ml) AS house,trim(m.name||' '||m.name_ml) AS guardian,w.name||' '||w.name_ml AS ward,f.status,(SELECT COUNT(*) FROM members WHERE family_id=f.id AND archived_at IS NULL AND life_status='living') AS living,COALESCE(p.active,1) AS active,COALESCE(p.exempt,0) AS exempt FROM families f JOIN wards w ON w.id=f.ward_id JOIN members m ON m.id=f.guardian_member_id LEFT JOIN family_finance_policy p ON p.family_id=f.id WHERE f.id=?`).get(id) as Household|undefined;
     if(!family)throw new FinanceError('FINANCE_NOT_FOUND');return family;

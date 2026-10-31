@@ -3,7 +3,7 @@ import type { BrowserWindow } from 'electron';
 const handlers=vi.hoisted(()=>new Map<string,(event:unknown,input:unknown)=>Promise<unknown>>());
 vi.mock('electron',()=>({ipcMain:{handle:vi.fn((channel,handler)=>handlers.set(channel,handler))}}));
 import { registerIntegrationsIpc } from '../../electron/integrations-ipc';
-import { WorkspaceStore } from '../../electron/database/store';
+import { WorkspaceStore } from '../fixtures/authenticated-store';
 import { integrationChannels as C } from '../../shared/integrations';
 const stores:WorkspaceStore[]=[];
 beforeEach(()=>handlers.clear());afterEach(()=>stores.splice(0).forEach(s=>s.close()));

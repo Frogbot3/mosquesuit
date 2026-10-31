@@ -19,11 +19,13 @@ app.setName('Mosque Suite');
 // Keep development/test fixtures separate from the packaged preview's userData.
 const testProfile = !app.isPackaged && process.env.MOSQUE_TEST_PROFILE;
 if (testProfile && !/^test-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(testProfile)) throw new Error('Invalid test profile.');
-const integrationsDemo = !app.isPackaged && Boolean(testProfile || process.env.MOSQUE_INTEGRATIONS_DEMO === '1');
+const securityDemo = !app.isPackaged && process.env.MOSQUE_SECURITY_DEMO === '1';
+const integrationsDemo = !app.isPackaged && Boolean(testProfile || securityDemo || process.env.MOSQUE_INTEGRATIONS_DEMO === '1');
 const financeDemo = !app.isPackaged && Boolean(testProfile || integrationsDemo || process.env.MOSQUE_FINANCE_DEMO === '1');
 const lifeEventsDemo = !app.isPackaged && Boolean(testProfile || financeDemo || process.env.MOSQUE_LIFE_EVENTS_DEMO === '1');
-if (!app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'Mosque Suite Development', testProfile || (integrationsDemo ? 'integrations-demo' : financeDemo ? 'finance-demo' : lifeEventsDemo ? 'life-events-demo' : 'workspace')));
+if (!app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'Mosque Suite Development', testProfile || (securityDemo ? 'security-demo' : integrationsDemo ? 'integrations-demo' : financeDemo ? 'finance-demo' : lifeEventsDemo ? 'life-events-demo' : 'workspace')));
 const development = !app.isPackaged && process.env.MOSQUE_DEV_URL === DEV_ORIGIN;
+let restoreRequested=false;
 let backups:BackupService|undefined;
 let backupTimer:ReturnType<typeof setInterval>|undefined;
 let integrationClient:IntegrationClient|undefined;
@@ -43,7 +45,7 @@ else {
       const dataDir=activeWorkspace(app.getPath('userData'));
       store = new WorkspaceStore(join(dataDir, 'mosque-suite.sqlite3'), lifeEventsDemo,financeDemo,integrationsDemo);
       if(integrationsDemo){integrationClient=await createMockIntegrationClient(join(dataDir,'integration-service.sqlite3'),store.integrations.workspaceId);store.integrations.attach(integrationClient);}
-      backups=new BackupService(store,app.getPath('userData'),dataDir,{available:()=>safeStorage.isEncryptionAvailable(),seal:value=>safeStorage.encryptString(value),open:value=>safeStorage.decryptString(value)},integrationClient?.snapshot,()=>{app.relaunch();app.quit();});
+      backups=new BackupService(store,app.getPath('userData'),dataDir,{available:()=>safeStorage.isEncryptionAvailable(),seal:value=>safeStorage.encryptString(value),open:value=>safeStorage.decryptString(value)},integrationClient?.snapshot,()=>{restoreRequested=true;app.relaunch();app.quit();});
       backupTimer=setInterval(()=>void backups?.scheduled(),60000);
       powerMonitor.on('lock-screen',()=>{store?.security.lock();printDocuments.clear();void backups?.clearPreview();});
       powerMonitor.on('suspend',()=>{store?.security.lock();printDocuments.clear();void backups?.clearPreview();});
@@ -91,8 +93,9 @@ else {
       mainWindow.webContents.on('will-navigate', (event, url) => { if (!isTrustedDocument(url, development)) event.preventDefault(); });
       mainWindow.webContents.on('will-attach-webview', event => event.preventDefault());
       mainWindow.webContents.on('will-prevent-unload', event => {
+        if(restoreRequested){event.preventDefault();return;}
         if (!mainWindow || !store) return;
-        const malayalam = store.getSettings().locale === 'ml';
+        const malayalam = store.security.state().locale === 'ml';
         const choice = dialog.showMessageBoxSync(mainWindow, {
           type: 'question', title: 'Mosque Suite',
           message: malayalam ? 'സൂക്ഷിക്കാതെ മടങ്ങണോ?' : 'Leave without saving?',

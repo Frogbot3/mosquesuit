@@ -8,6 +8,6 @@ await build({
   target: 'node22',
   outdir: 'dist-electron',
   outExtension: { '.js': '.cjs' },
-  external: ['electron', 'better-sqlite3','exceljs'],
+  external: ['electron', 'better-sqlite3','exceljs','@node-rs/argon2'],
   sourcemap: false,
 });

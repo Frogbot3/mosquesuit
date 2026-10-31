@@ -1,6 +1,6 @@
 # Mosque Suite
 
-An offline-first Windows desktop workspace for mosque administration. **Version 0.5.0 adds Phase 5 consent, notifications, offline queues, schedules, simulated online payments, verified webhooks and receipt delivery in a separate integration demo. Staff authentication and recovery are still pending; use fictional information only.**
+An offline-first Windows desktop workspace for mosque administration. **Version 0.6.0 adds offline staff login, configurable roles and ward scope, audit history, encrypted backups and verified restore. Live messaging/payments remain disabled and production deployment checks remain open. Use fictional information for evaluation.**
 
 ## What works
 
@@ -17,7 +17,18 @@ An offline-first Windows desktop workspace for mosque administration. **Version 
 
 - Isolated demo marriage/divorce/death registries, explicit member-status transitions, guardian reassignment flags, separately confirmed household transfers, attachment copies and bilingual PDF/native-print output.
 
-Financial management, simulated demo permissions, bilingual receipts, PDF/Excel/CSV reports and SQLite snapshot backups are implemented. Phase 5 adds mocked messaging/payment workflows and a separately built secure service foundation. Real provider activation, family-sheet printing, imports, authenticated staff permissions, encryption, restore and ward administration remain pending. No Aadhaar fields or identity-number storage are provided. See [Phase 4 accounting rules](docs/PHASE-4.md) and [Phase 5 setup and verification](docs/PHASE-5.md).
+Financial management, bilingual receipts, PDF/Excel/CSV reports, mocked messaging/payment workflows and their service foundation remain available. Phase 6 adds authenticated permissions, encrypted backup and restore. Family-sheet printing, imports, ward administration and real provider activation remain separate work. No Aadhaar field is provided. See [Phase 6 administration and recovery](docs/PHASE-6.md), [privacy review](docs/PHASE-6-PRIVACY.md), and [verification](docs/PHASE-6-VERIFICATION.md).
+
+## Open Phase 6 staff security
+
+Double-click **Open-Mosque-Security.cmd**, or run:
+
+```powershell
+npm.cmd run build
+npm.cmd run demo:security
+```
+
+Create your own administrator account and save its one-time recovery file separately. The security demo uses a separate profile; all existing profiles require first-run administrator setup after upgrading too. There is no default password. **Staff & permissions**, **Audit history**, **Backup & restore** and **Account & security** are now active. See the [administrator guide](docs/PHASE-6.md).
 
 ## Open the Phase 5 integration demo
 
@@ -43,7 +54,7 @@ npm.cmd run build
 npm.cmd run demo:finance
 ```
 
-On later launches, only `npm.cmd run demo:finance` is needed. Create fictional families in this separate workspace first. Its selectable roles simulate permissions; real staff authentication is not available. The old Phase 1 executable does not contain these features. See [the Phase 4 walkthrough](docs/PHASE-4.md) for payments, receipts, reports and backups.
+On later launches, only `npm.cmd run demo:finance` is needed. Create fictional families in this separate workspace first. Staff login and assigned permissions now control access; demo role impersonation is disabled. The old Phase 1 executable does not contain these features. See [the Phase 4 walkthrough](docs/PHASE-4.md) for payments, receipts, reports and backups.
 
 ## Requirements and first run
 
@@ -87,7 +98,7 @@ Current verification: **66 unit/component tests and 22 Electron tests passed**, 
 | Fictional finance / `npm run demo:finance` | `%APPDATA%\Mosque Suite Development\finance-demo\` |
 | Automated Electron tests | `%APPDATA%\Mosque Suite Development\test-<unique-id>\` |
 
-The database is `mosque-suite.sqlite3`. WAL/SHM sidecars are normal. Data is never placed in the source tree or installer. A single-instance lock protects one profile; this is not a multi-computer database. Do not place it on a shared network drive. The development reset changes only the fictional mosque profile/preferences and preserves registrations, events, attachments and history. The packaged preview has no reset capability. Additive migrations 2–4 preserve earlier data. Older code refuses the newer schema. Attachments are stored inside SQLite. Life-event operations are denied in the ordinary workspace and packaged builds until production authorization exists.
+The database is `mosque-suite.sqlite3`. WAL/SHM sidecars are normal. Data is never placed in the source tree or installer. A single-instance lock protects one profile; this is not a multi-computer database. Do not place it on a shared network drive. The development reset changes only the fictional mosque profile/preferences and preserves registrations, events, attachments and history. The packaged preview has no reset capability. Additive migrations 2–4 preserve earlier data. Older code refuses the newer schema. Attachments are stored inside SQLite. Life-event/finance/integration modules remain isolated demonstrations pending production release checks. Phase 6 staff authorization applies to every workspace. Restore uses validated generations and an active-workspace pointer; see the recovery guide.
 
 ## Source map
 
@@ -132,5 +143,5 @@ docs/                     Architecture, risks, administrator guide, roadmap
 - [Milestone plan and acceptance scope](docs/ROADMAP.md)
 - [Design system and reference](docs/DESIGN.md)
 
-The remaining product is described in the roadmap. Family-sheet printing, staged imports and the other deferred modules require separate implementation. Real-data rollout waits for the security and recovery gates.
+The remaining product is described in the roadmap. Family-sheet printing, staged imports and the other deferred modules require separate implementation. Real-data rollout waits for the remaining installer, dependency, privacy and operational release gates documented for Phase 6.
 # mosquesuit

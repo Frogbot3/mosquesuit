@@ -1,3 +1,5 @@
+import {securityChannels} from '../../shared/security';
+import {authenticate} from '../fixtures/electron-auth';
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { randomUUID } from 'node:crypto';
@@ -19,7 +21,7 @@ test.beforeEach(async () => {
   const env: Record<string, string> = { ...Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined)), MOSQUE_TEST_PROFILE: profile };
   delete env.ELECTRON_RUN_AS_NODE; delete env.MOSQUE_DEV_URL;
   app = await electron.launch({ args: ['.'], env });
-  page = await app.firstWindow();
+  page = await app.firstWindow();await authenticate(app,page);
   errors = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -48,7 +50,7 @@ test('loads local assets offline and enforces the Electron boundary', async () =
     return { sandbox: preferences.sandbox, isolation: preferences.contextIsolation, node: preferences.nodeIntegration, webSecurity: preferences.webSecurity };
   });
   expect(preferences).toEqual({ sandbox: true, isolation: true, node: false, webSecurity: true });
-  expect(await page.evaluate(() => ({ node: typeof (window as unknown as { require: unknown }).require, bridge: Object.keys(window.mosque!) }))).toEqual({ node: 'undefined', bridge: ["getIntegrationState","saveMessagingConsent","saveNotificationTemplate","previewNotifications","queueNotifications","decideNotifications","saveReminderSchedule","runReminderSchedules","saveIntegrationConfig","setIntegrationMock","syncIntegrations","createOnlinePaymentLink","cancelOnlinePaymentLink","simulateIntegrationEvent","requestOnlineRefund","resolveOnlineConflict",'getFinanceSetup','setFinanceDemoRole','saveFinancePlan','saveFinanceAssignment','saveFinancePolicy','generateFinanceDues','getFamilyFinance','recordFinancePayment','applyFinanceCredit','adjustFinanceDue','correctFinanceTransaction','saveFinanceFund','saveFinanceCategory','recordFinanceDonation','recordFinanceExpense','decideFinanceExpense','getFinanceDashboard','getFinanceReport','getFinanceTransaction','getFinanceReceipt','getFinanceAudit','saveFinanceConfig','chooseFinanceLogo','outputFinanceDocument','backupFinance','getSnapshot', 'saveSettings', 'checkStorage', 'resetDemo', 'listFamilies', 'getFamily', 'saveFamily', 'listMembers', 'getMember', 'listEvents', 'getEvent', 'saveEvent', 'transitionEvent', 'getEventCategories', 'saveEventCategory', 'transferMember', 'getTransfers', 'attachEventDocument', 'exportEventDocument', 'outputEvent'] });
+  expect(await page.evaluate(() => ({ node: typeof (window as unknown as { require: unknown }).require, bridge: Object.keys(window.mosque!) }))).toEqual({ node: 'undefined', bridge: [...Object.keys(securityChannels),"getIntegrationState","saveMessagingConsent","saveNotificationTemplate","previewNotifications","queueNotifications","decideNotifications","saveReminderSchedule","runReminderSchedules","saveIntegrationConfig","setIntegrationMock","syncIntegrations","createOnlinePaymentLink","cancelOnlinePaymentLink","simulateIntegrationEvent","requestOnlineRefund","resolveOnlineConflict",'getFinanceSetup','setFinanceDemoRole','saveFinancePlan','saveFinanceAssignment','saveFinancePolicy','generateFinanceDues','getFamilyFinance','recordFinancePayment','applyFinanceCredit','adjustFinanceDue','correctFinanceTransaction','saveFinanceFund','saveFinanceCategory','recordFinanceDonation','recordFinanceExpense','decideFinanceExpense','getFinanceDashboard','getFinanceReport','getFinanceTransaction','getFinanceReceipt','getFinanceAudit','saveFinanceConfig','chooseFinanceLogo','outputFinanceDocument','backupFinance','getSnapshot', 'saveSettings', 'checkStorage', 'resetDemo', 'listFamilies', 'getFamily', 'saveFamily', 'listMembers', 'getMember', 'listEvents', 'getEvent', 'saveEvent', 'transitionEvent', 'getEventCategories', 'saveEventCategory', 'transferMember', 'getTransfers', 'attachEventDocument', 'exportEventDocument', 'outputEvent'] });
   await page.context().setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'A place for every family.' })).toBeVisible();
@@ -71,7 +73,7 @@ test('saves Malayalam settings and retains them after a real application restart
   await expect(page.getByRole('status').filter({ hasText: 'Settings saved' })).toBeVisible();
   await app.close();
   const env: Record<string, string> = { ...Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined)), MOSQUE_TEST_PROFILE: profile }; delete env.ELECTRON_RUN_AS_NODE; delete env.MOSQUE_DEV_URL;
-  app = await electron.launch({ args: ['.'], env }); page = await app.firstWindow();
+  app = await electron.launch({ args: ['.'], env }); page = await app.firstWindow();await authenticate(app,page);
   await page.getByRole('link', { name: 'Configure mosque' }).click();
   await expect(page.getByLabel('Mosque name (English)')).toHaveValue('Fictional Crescent Mosque');
   await expect(page.getByLabel('Mosque name (Malayalam)')).toHaveValue('മാതൃകാ പള്ളി');

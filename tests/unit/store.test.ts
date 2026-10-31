@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import { ConflictError, WorkspaceStore } from '../../electron/database/store';
+import { ConflictError, WorkspaceStore } from '../fixtures/authenticated-store';
 import { migrate, migrations } from '../../electron/database/migrations';
 
 const stores: WorkspaceStore[] = [];
@@ -14,7 +14,7 @@ afterEach(() => { stores.splice(0).forEach(store => store.close()); dirs.splice(
 describe('workspace storage', () => {
   it('migrates a new database and seeds exactly four fictional wards', () => {
     const store = open();
-    expect(store.getSchemaVersion()).toBe(5);
+    expect(store.getSchemaVersion()).toBe(6);
     expect(store.getWards().map(ward => ward.code)).toEqual(['W1', 'W2', 'W3', 'W4']);
     expect(store.getSettings().name).toBe('Demo Mosque');
     expect(store.getActivity()).toHaveLength(1);
@@ -68,7 +68,7 @@ describe('migration guarantees', () => {
     const db = new Database(':memory:'); db.pragma('foreign_keys=ON');
     try {
       migrate(db); migrate(db);
-      expect(db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get()).toEqual({ n: 5 });
+      expect(db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get()).toEqual({ n: 6 });
       expect(() => db.prepare("INSERT INTO wards(id,mosque_id,code,name,sort_order) VALUES('bad',2,'X','bad',9)").run()).toThrow();
       expect(() => db.exec('DELETE FROM audit_events')).toThrow('append-only');
       expect(() => db.exec("UPDATE audit_events SET kind='demo.reset'")).toThrow('append-only');
@@ -79,7 +79,7 @@ describe('migration guarantees', () => {
     try {
       migrate(db);
       expect(() => migrate(db, [{ ...migrations[0], sql: `${migrations[0].sql}\n-- changed` }, ...migrations.slice(1)])).toThrow('history');
-      db.prepare("INSERT INTO schema_migrations(version,name,checksum) VALUES(6,'future','unknown')").run();
+      db.prepare("INSERT INTO schema_migrations(version,name,checksum) VALUES(7,'future','unknown')").run();
       expect(() => migrate(db)).toThrow('newer');
     } finally { db.close(); }
   });
@@ -87,9 +87,9 @@ describe('migration guarantees', () => {
     const db = new Database(':memory:');
     try {
       migrate(db);
-      expect(() => migrate(db, [...migrations, { version: 6, name: 'broken', sql: 'CREATE TABLE should_rollback(id INTEGER); INSERT INTO missing VALUES(1);' }])).toThrow();
+      expect(() => migrate(db, [...migrations, { version: 7, name: 'broken', sql: 'CREATE TABLE should_rollback(id INTEGER); INSERT INTO missing VALUES(1);' }])).toThrow();
       expect(db.prepare("SELECT name FROM sqlite_master WHERE name='should_rollback'").get()).toBeUndefined();
-      expect(db.prepare('SELECT MAX(version) AS n FROM schema_migrations').get()).toEqual({ n: 5 });
+      expect(db.prepare('SELECT MAX(version) AS n FROM schema_migrations').get()).toEqual({ n: 6 });
     } finally { db.close(); }
   });
 });

@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import { WorkspaceStore } from '../../electron/database/store';
+import { WorkspaceStore } from '../fixtures/authenticated-store';
 import { migrations, migrate } from '../../electron/database/migrations';
 import { fictionalFamily } from '../fixtures/registration';
 import { blankMember, calculateAge, profileToDraft, todayInIndia } from '../../shared/registration';
@@ -117,7 +117,7 @@ describe('migration and date correctness', () => {
   it('upgrades Phase 1 without changing existing settings, ward IDs or activity', () => {
     const path = fixturePath(); const db = new Database(path); db.pragma('foreign_keys=ON'); migrate(db, [migrations[0]]);
     db.prepare("UPDATE mosque_settings SET name='Preserved fictional mosque'").run(); db.prepare("UPDATE wards SET name='Preserved ward' WHERE id='ward-1'").run(); db.close();
-    const store = open(path); expect(store.getSchemaVersion()).toBe(5); expect(store.getSettings().name).toBe('Preserved fictional mosque');
+    const store = open(path); expect(store.getSchemaVersion()).toBe(6); expect(store.getSettings().name).toBe('Preserved fictional mosque');
     expect(store.getWards()[0].name).toBe('Preserved ward'); expect(store.getActivity()).toHaveLength(1); expect(store.registration.counts().families).toBe(0);
   });
   it('enforces guardian identity and immutable history directly in SQLite', () => {

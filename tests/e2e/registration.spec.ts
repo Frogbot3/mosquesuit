@@ -1,3 +1,4 @@
+import {authenticate} from '../fixtures/electron-auth';
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { randomUUID } from 'node:crypto';
@@ -11,7 +12,7 @@ let app: ElectronApplication | undefined; let page: Page; let profile: string; l
 async function launch() {
   const env: Record<string, string> = { ...Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined)), MOSQUE_TEST_PROFILE: profile };
   delete env.ELECTRON_RUN_AS_NODE; delete env.MOSQUE_DEV_URL;
-  app = await electron.launch({ args: ['.'], env }); page = await app.firstWindow();
+  app = await electron.launch({ args: ['.'], env }); page = await app.firstWindow();await authenticate(app,page);
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   await expect(page.getByRole('heading', { name: 'A place for every family.' })).toBeVisible();
@@ -84,7 +85,7 @@ test('registers a guardian and three members, restarts, edits, and searches pers
   await expect(page.getByText('Fictional teacher', { exact: true })).toBeVisible();
   const family = await page.evaluate(id => window.mosque!.getFamily({ id }), id);
   expect(family).toMatchObject({ ok: true, data: { totals: { living: 4, male: 2, female: 2 }, revision: 1 } });
-  expect(await page.evaluate(() => window.mosque!.checkStorage())).toMatchObject({ ok: true, data: { integrity: 'ok', foreignKeys: true, schemaVersion: 5 } });
+  expect(await page.evaluate(() => window.mosque!.checkStorage())).toMatchObject({ ok: true, data: { integrity: 'ok', foreignKeys: true, schemaVersion: 6 } });
 });
 
 test('rejects duplicate and invalid registration input while preserving saved data and the unsaved form', async () => {

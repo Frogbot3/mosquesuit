@@ -1,3 +1,4 @@
+import { authorizeIpc } from './ipc-authorization';
 import { SecurityError } from '../shared/security';
 import { ipcMain, type BrowserWindow } from 'electron';
 import { z } from 'zod';
@@ -18,7 +19,7 @@ export function registerIpc(window: BrowserWindow, store: WorkspaceStore, info: 
       }
       const parsed = schema.safeParse(input);
       if (!parsed.success) return { ok: false, error: { code: 'VALIDATION', message: 'Check the supplied fields and try again.' } };
-      try { return { ok: true, data: action(parsed.data) }; }
+      try { authorizeIpc(store.security,channel,parsed.data); return { ok: true, data: store.security.operation(()=>action(parsed.data)) }; }
       catch (error) {
         if (error instanceof SecurityError || error instanceof RegistryError || error instanceof LifeEventError) return { ok: false, error: { code: error.code, message: 'The registration could not be saved. Review the record and try again.' } };
         if (error instanceof ConflictError) return { ok: false, error: { code: 'CONFLICT', message: error.message } };

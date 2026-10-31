@@ -8,3 +8,8 @@ try {
   if (db.prepare('SELECT message FROM native_check').get().message !== 'മലയാളം') throw new Error('Unicode round trip failed');
   console.log(`SQLite native check passed: ${db.prepare('SELECT sqlite_version() AS version').get().version}`);
 } finally { db.close(); }
+
+const {hashSync,verifySync}=await import('@node-rs/argon2');
+const sample='Fictional native verification only';
+if(!verifySync(hashSync(sample,{memoryCost:65536,timeCost:3,parallelism:1}),sample))throw new Error('Argon2 native check failed');
+console.log('Argon2id native check passed');

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import electron from 'electron';
 const env = { ...process.env };
+if (process.argv.includes('--security-demo')) env.MOSQUE_SECURITY_DEMO = '1';
 if (process.argv.includes('--integrations-demo')) env.MOSQUE_INTEGRATIONS_DEMO = '1';
 if (process.argv.includes('--life-events-demo')) env.MOSQUE_LIFE_EVENTS_DEMO = '1';
 if (process.argv.includes('--finance-demo')) env.MOSQUE_FINANCE_DEMO = '1';

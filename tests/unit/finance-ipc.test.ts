@@ -4,7 +4,7 @@ const handlers=vi.hoisted(()=>new Map<string,(event:unknown,input:unknown)=>Prom
 vi.mock('electron',()=>({ipcMain:{handle:vi.fn((channel,handler)=>handlers.set(channel,handler))}}));
 vi.mock('../../electron/finance-output',()=>({chooseFinanceLogo:vi.fn(),outputFinance:vi.fn(),backupFinance:vi.fn()}));
 import { registerFinanceIpc } from '../../electron/finance-ipc';
-import { WorkspaceStore } from '../../electron/database/store';
+import { WorkspaceStore } from '../fixtures/authenticated-store';
 import { FINANCE_CHANNELS as C } from '../../shared/finance-channels';
 const stores:WorkspaceStore[]=[];
 beforeEach(()=>handlers.clear());afterEach(()=>stores.splice(0).forEach(s=>s.close()));

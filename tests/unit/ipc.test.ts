@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BrowserWindow } from 'electron';
 import { CHANNELS } from '../../shared/channels';
-import { WorkspaceStore } from '../../electron/database/store';
+import { WorkspaceStore } from '../fixtures/authenticated-store';
 import { fictionalFamily } from '../fixtures/registration';
 
 const handlers = vi.hoisted(() => new Map<string, (event: unknown, input: unknown) => unknown>());

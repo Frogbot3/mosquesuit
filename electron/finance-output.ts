@@ -1,8 +1,8 @@
+import { externalDestination } from './secure-files';
 import { app,BrowserWindow,dialog,nativeImage,type BrowserWindow as Window } from 'electron';
-import { open,readdir,writeFile,rename,rm } from 'node:fs/promises';
-import { join,resolve,extname } from 'node:path';
+import { open,readdir,writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import Database from 'better-sqlite3';
 import ExcelJS from 'exceljs';
 import { financeText } from '../shared/finance-labels';
 import { FinanceError,money,type FinanceOutputRequest,type FinanceReceipt,type FinanceReport } from '../shared/finance';
@@ -43,25 +43,20 @@ export async function financeWorkbook(report:FinanceReport,locale:Settings['loca
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 export async function chooseFinanceLogo(window:Window,store:WorkspaceStore,input:{revision:number;remove:boolean}){
-  store.finance.require('administrator');if(input.remove)return store.finance.setLogo('',input.revision);
+  store.security.require('finance.configure');store.finance.require('administrator');if(input.remove)return store.finance.setLogo('',input.revision);
   const picked=await dialog.showOpenDialog(window,{title:financeText(store.getSettings().locale,'chooseLogo'),properties:['openFile'],filters:[{name:'PNG',extensions:['png']}]});if(picked.canceled||!picked.filePaths[0])return null;
   const file=await open(picked.filePaths[0],'r');try{const stat=await file.stat();if(!stat.isFile()||stat.size>1048576)throw new FinanceError('FINANCE_LOGO');const buffer=Buffer.alloc(1048577);let size=0;while(size<buffer.length){const r=await file.read(buffer,size,buffer.length-size,null);if(!r.bytesRead)break;size+=r.bytesRead;}const data=buffer.subarray(0,size);
     if(size>1048576||size<24||!data.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||data.toString('ascii',12,16)!=='IHDR'||data.readUInt32BE(16)>1024||data.readUInt32BE(20)>1024)throw new FinanceError('FINANCE_LOGO');const image=nativeImage.createFromBuffer(data);if(image.isEmpty())throw new FinanceError('FINANCE_LOGO');return store.finance.setLogo(image.resize({width:160}).toDataURL(),input.revision);
   }finally{await file.close();}
 }
 export async function outputFinance(window:Window,store:WorkspaceStore,rendererRoot:string,input:FinanceOutputRequest){
-  store.finance.require();const settings=store.getSettings();const report=input.document==='report'?store.finance.report(input.report):null;
+  store.security.require('data.export');store.security.global();store.finance.require();const settings=store.getSettings();const report=input.document==='report'?store.finance.report(input.report):null;
   const receipt=input.document==='receipt'?await store.finance.receipt({id:input.id}):null;
-  let destination:string|undefined;if(input.format!=='print'){const picked=await dialog.showSaveDialog(window,{title:financeText(settings.locale,'printPreview'),defaultPath:`Demo-${receipt?.number??report?.kind}.${input.format}`,filters:[{name:input.format.toUpperCase(),extensions:[input.format]}]});if(picked.canceled||!picked.filePath)return false;destination=picked.filePath;}
-  if(report&&destination&&(input.format==='csv'||input.format==='xlsx')){await writeFile(destination,input.format==='csv'?financeCsv(report,settings.locale):await financeWorkbook(report,settings.locale));return true;}
+  let destination:string|undefined;if(input.format!=='print'){const picked=await dialog.showSaveDialog(window,{title:financeText(settings.locale,'printPreview'),defaultPath:`Demo-${receipt?.number??report?.kind}.${input.format}`,filters:[{name:input.format.toUpperCase(),extensions:[input.format]}]});if(picked.canceled||!picked.filePath)return false;destination=await externalDestination(picked.filePath,app.getPath('userData'));}
+  if(report&&destination&&(input.format==='csv'||input.format==='xlsx')){const bytes=input.format==='csv'?financeCsv(report,settings.locale):await financeWorkbook(report,settings.locale);store.security.require('data.export');await writeFile(destination,bytes);store.security.audit('export.finance','report',report.kind);return true;}
   const css=(await readdir(join(rendererRoot,'assets'))).find(f=>/^index-.*\.css$/.test(f));if(!css)throw new Error('Build assets required');const url=`app://mosque/assets/${css}`;
   const html=receipt?receiptPaper(receipt,url,input.layout):reportPaper(report!,settings,url);const token=`/print/${randomUUID()}`;printDocuments.set(token,html);
   const paper=new BrowserWindow({show:false,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true,devTools:false}});paper.webContents.setWindowOpenHandler(()=>({action:'deny'}));paper.webContents.on('will-navigate',e=>e.preventDefault());
-  try{await paper.loadURL(`app://mosque${token}`);await paper.webContents.executeJavaScript('Promise.all([document.fonts.ready,...Array.from(document.images).map(i=>i.decode())]).then(()=>true)');if(destination)await writeFile(destination,await paper.webContents.printToPDF({pageSize:'A4',printBackground:true,preferCSSPageSize:true}));else await new Promise<void>((resolve,reject)=>paper.webContents.print({silent:false,printBackground:true},(ok,reason)=>ok?resolve():reject(new Error(reason))));return true;}
+  try{await paper.loadURL(`app://mosque${token}`);await paper.webContents.executeJavaScript('Promise.all([document.fonts.ready,...Array.from(document.images).map(i=>i.decode())]).then(()=>true)');if(destination){const bytes=await paper.webContents.printToPDF({pageSize:'A4',printBackground:true,preferCSSPageSize:true});store.security.require('data.export');await writeFile(destination,bytes);}else {store.security.require('data.export');await new Promise<void>((resolve,reject)=>paper.webContents.print({silent:false,printBackground:true},(ok,reason)=>ok?resolve():reject(new Error(reason))));}store.security.audit(receipt?'receipt.reprinted':'export.finance',receipt?'receipt':'report',receipt?.id??report?.kind??'');return true;}
   finally{printDocuments.delete(token);paper.destroy();}
-}
-export async function backupFinance(window:Window,store:WorkspaceStore){
-  store.finance.require('administrator');const picked=await dialog.showSaveDialog(window,{title:financeText(store.getSettings().locale,'backup'),defaultPath:'Demo-Finance-Snapshot.sqlite3',filters:[{name:'SQLite snapshot',extensions:['sqlite3']}]});if(picked.canceled||!picked.filePath)return false;
-  const destination=resolve(picked.filePath);const source=resolve(app.getPath('userData'),'mosque-suite.sqlite3');if(!['.sqlite3','.db'].includes(extname(destination).toLowerCase())||[source,`${source}-wal`,`${source}-shm`].some(p=>p.toLowerCase()===destination.toLowerCase()))throw new FinanceError('FINANCE_INVALID');
-  const temporary=`${destination}.${randomUUID()}.tmp`;try{await store.finance.backup(temporary);const check=new Database(temporary,{readonly:true});try{if(check.pragma('quick_check',{simple:true})!=='ok'||(check.pragma('foreign_key_check') as unknown[]).length)throw new Error('Invalid backup');}finally{check.close();}await rename(temporary,destination);return true;}finally{await rm(temporary,{force:true});}
 }

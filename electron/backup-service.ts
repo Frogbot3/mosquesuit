@@ -1,43 +1,717 @@
-import Database from 'better-sqlite3';
-import { createCipheriv,createDecipheriv,randomBytes,randomUUID } from 'node:crypto';
-import { gzipSync,gunzipSync } from 'node:zlib';
-import { mkdir,readFile,writeFile,rename,rm,stat,lstat,realpath } from 'node:fs/promises';
-import { join,resolve,relative,basename } from 'node:path';
-import { z } from 'zod';
-import { SecurityError,type BackupPreview,type BackupState,backupConfigSchema,backupRestoreSchema } from '../shared/security';
-import { SecurityStore } from './database/security-store';
-import type { WorkspaceStore } from './database/store';
-import { deriveSecret,digest } from './security-crypto';
-import { migrations,migrate } from './database/migrations';
-import { activateWorkspace } from './workspace-path';
-const MAX=256*1024*1024, MAGIC=Buffer.from('MSB6');
-const manifestSchema=z.object({version:z.literal(1),workspaceId:z.uuid(),createdAt:z.string().datetime(),schemaVersion:z.number().int().min(6),mosque:z.string().max(120),files:z.array(z.object({name:z.enum(['mosque-suite.sqlite3','integration-service.sqlite3']),size:z.number().int().positive().max(MAX),sha256:z.string().regex(/^[a-f\d]{64}$/),data:z.string().max(MAX*1.4)}).strict()).min(1).max(2)}).strict();
-type Archive=z.infer<typeof manifestSchema>;
-export function encryptArchive(archive:Archive,password:string){const salt=randomBytes(16),iv=randomBytes(12);const header=Buffer.from(JSON.stringify({version:1,kdf:'argon2id',memory:65536,passes:3,parallelism:1,salt:salt.toString('base64'),iv:iv.toString('base64')}));const key=deriveSecret(password,salt);try{const cipher=createCipheriv('aes-256-gcm',key,iv);cipher.setAAD(header);const compressed=gzipSync(Buffer.from(JSON.stringify(archive)));const encrypted=Buffer.concat([cipher.update(compressed),cipher.final()]);compressed.fill(0);const length=Buffer.alloc(4);length.writeUInt32BE(header.length);return Buffer.concat([MAGIC,length,header,cipher.getAuthTag(),encrypted]);}finally{key.fill(0);}}
-export function decryptArchive(data:Buffer,password:string):Archive {if(data.length>MAX||data.length<64||!data.subarray(0,4).equals(MAGIC))throw new SecurityError('BACKUP_INVALID');const length=data.readUInt32BE(4);if(length<1||length>1024||data.length<length+24)throw new SecurityError('BACKUP_INVALID');const raw=data.subarray(8,8+length);let header:ReturnType<typeof headerSchema.parse>;try{header=headerSchema.parse(JSON.parse(raw.toString('utf8')));}catch{throw new SecurityError('BACKUP_INVALID');}const salt=Buffer.from(header.salt,'base64'),iv=Buffer.from(header.iv,'base64');if(salt.length!==16||iv.length!==12)throw new SecurityError('BACKUP_INVALID');const key=deriveSecret(password,salt);let plain:Buffer;try{const decipher=createDecipheriv('aes-256-gcm',key,iv);decipher.setAAD(raw);decipher.setAuthTag(data.subarray(8+length,24+length));plain=Buffer.concat([decipher.update(data.subarray(24+length)),decipher.final()]);}catch{throw new SecurityError('BACKUP_PASSWORD');}finally{key.fill(0);}try{const unpacked=gunzipSync(plain,{maxOutputLength:MAX*1.4});try{const archive=manifestSchema.parse(JSON.parse(unpacked.toString('utf8')));if(new Set(archive.files.map(f=>f.name)).size!==archive.files.length||!archive.files.some(f=>f.name==='mosque-suite.sqlite3'))throw new Error('Files');let size=0;for(const file of archive.files){const bytes=Buffer.from(file.data,'base64');size+=bytes.length;if(bytes.length!==file.size||digest(bytes)!==file.sha256||size>MAX)throw new Error('Checksum');}return archive;}finally{unpacked.fill(0);}}catch{throw new SecurityError('BACKUP_INVALID');}finally{plain.fill(0);}}
-const headerSchema=z.object({version:z.literal(1),kdf:z.literal('argon2id'),memory:z.literal(65536),passes:z.literal(3),parallelism:z.literal(1),salt:z.string().max(32),iv:z.string().max(24)}).strict();
-type SecretVault={seal:(password:string)=>Buffer;open:(cipher:Buffer)=>string;available:()=>boolean};
-type Config={backup_destination:string;backup_scheduled:number;backup_interval_hours:number;backup_retain:number;backup_owner:string|null;backup_last_at:number};
+import { readBounded, atomicPrivateFile } from "./secure-files";
+import Database from "better-sqlite3";
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  randomUUID,
+} from "node:crypto";
+import { gzipSync, gunzipSync } from "node:zlib";
+import {
+  mkdir,
+  readFile,
+  writeFile,
+  rename,
+  rm,
+  stat,
+  lstat,
+  realpath,
+} from "node:fs/promises";
+import { join, resolve, relative, basename } from "node:path";
+import { z } from "zod";
+import {
+  SecurityError,
+  type BackupPreview,
+  type BackupState,
+  backupConfigSchema,
+  backupRestoreSchema,
+} from "../shared/security";
+import { SecurityStore } from "./database/security-store";
+import type { WorkspaceStore } from "./database/store";
+import { deriveSecret, digest } from "./security-crypto";
+import { migrations, migrate } from "./database/migrations";
+import { activateWorkspace } from "./workspace-path";
+const MAX = 256 * 1024 * 1024,
+  MAGIC = Buffer.from("MSB6");
+const manifestSchema = z
+  .object({
+    version: z.literal(1),
+    workspaceId: z.uuid(),
+    createdAt: z.string().datetime(),
+    schemaVersion: z.number().int().min(6),
+    mosque: z.string().max(120),
+    files: z
+      .array(
+        z
+          .object({
+            name: z.enum([
+              "mosque-suite.sqlite3",
+              "integration-service.sqlite3",
+            ]),
+            size: z.number().int().positive().max(MAX),
+            sha256: z.string().regex(/^[a-f\d]{64}$/),
+            data: z.string().max(MAX * 1.4),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(2),
+  })
+  .strict();
+type Archive = z.infer<typeof manifestSchema>;
+export function encryptArchive(archive: Archive, password: string) {
+  const salt = randomBytes(16),
+    iv = randomBytes(12);
+  const header = Buffer.from(
+    JSON.stringify({
+      version: 1,
+      kdf: "argon2id",
+      memory: 65536,
+      passes: 3,
+      parallelism: 1,
+      salt: salt.toString("base64"),
+      iv: iv.toString("base64"),
+    }),
+  );
+  const key = deriveSecret(password, salt);
+  try {
+    const cipher = createCipheriv("aes-256-gcm", key, iv);
+    cipher.setAAD(header);
+    const compressed = gzipSync(Buffer.from(JSON.stringify(archive)));
+    const encrypted = Buffer.concat([
+      cipher.update(compressed),
+      cipher.final(),
+    ]);
+    compressed.fill(0);
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(header.length);
+    return Buffer.concat([
+      MAGIC,
+      length,
+      header,
+      cipher.getAuthTag(),
+      encrypted,
+    ]);
+  } finally {
+    key.fill(0);
+  }
+}
+export function decryptArchive(data: Buffer, password: string): Archive {
+  if (
+    data.length > MAX ||
+    data.length < 64 ||
+    !data.subarray(0, 4).equals(MAGIC)
+  )
+    throw new SecurityError("BACKUP_INVALID");
+  const length = data.readUInt32BE(4);
+  if (length < 1 || length > 1024 || data.length < length + 24)
+    throw new SecurityError("BACKUP_INVALID");
+  const raw = data.subarray(8, 8 + length);
+  let header: ReturnType<typeof headerSchema.parse>;
+  try {
+    header = headerSchema.parse(JSON.parse(raw.toString("utf8")));
+  } catch {
+    throw new SecurityError("BACKUP_INVALID");
+  }
+  const salt = Buffer.from(header.salt, "base64"),
+    iv = Buffer.from(header.iv, "base64");
+  if (salt.length !== 16 || iv.length !== 12)
+    throw new SecurityError("BACKUP_INVALID");
+  const key = deriveSecret(password, salt);
+  let plain: Buffer;
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAAD(raw);
+    decipher.setAuthTag(data.subarray(8 + length, 24 + length));
+    plain = Buffer.concat([
+      decipher.update(data.subarray(24 + length)),
+      decipher.final(),
+    ]);
+  } catch {
+    throw new SecurityError("BACKUP_PASSWORD");
+  } finally {
+    key.fill(0);
+  }
+  try {
+    const unpacked = gunzipSync(plain, { maxOutputLength: MAX * 1.4 });
+    try {
+      const archive = manifestSchema.parse(
+        JSON.parse(unpacked.toString("utf8")),
+      );
+      if (
+        new Set(archive.files.map((f) => f.name)).size !==
+          archive.files.length ||
+        !archive.files.some((f) => f.name === "mosque-suite.sqlite3")
+      )
+        throw new Error("Files");
+      let size = 0;
+      for (const file of archive.files) {
+        const bytes = Buffer.from(file.data, "base64");
+        size += bytes.length;
+        if (
+          bytes.length !== file.size ||
+          digest(bytes) !== file.sha256 ||
+          size > MAX
+        )
+          throw new Error("Checksum");
+      }
+      return archive;
+    } finally {
+      unpacked.fill(0);
+    }
+  } catch {
+    throw new SecurityError("BACKUP_INVALID");
+  } finally {
+    plain.fill(0);
+  }
+}
+const headerSchema = z
+  .object({
+    version: z.literal(1),
+    kdf: z.literal("argon2id"),
+    memory: z.literal(65536),
+    passes: z.literal(3),
+    parallelism: z.literal(1),
+    salt: z.string().max(32),
+    iv: z.string().max(24),
+  })
+  .strict();
+type SecretVault = {
+  seal: (password: string) => Buffer;
+  open: (cipher: Buffer) => string;
+  available: () => boolean;
+};
+type Config = {
+  backup_destination: string;
+  backup_scheduled: number;
+  backup_interval_hours: number;
+  backup_retain: number;
+  backup_owner: string | null;
+  backup_last_at: number;
+};
 export class BackupService {
- private busy=false;private preview:{id:string;dir:string;generation:string;password:Buffer;expires:number;actorId:string}|null=null;
- constructor(private readonly store:WorkspaceStore,private readonly root:string,private readonly dataDir:string,private readonly vault:SecretVault,private readonly serviceSnapshot?: (path:string)=>Promise<void>,private readonly restart:()=>void=()=>{},private readonly now:()=>number=Date.now){}
- private get auth(){return this.store.security;}
- private get db(){return this.auth.db;}
- private config(){return this.db.prepare('SELECT * FROM security_settings WHERE id=1').get() as Config;}
- private secretFile(){return join(this.root,'backup-key.dpapi');}
- private async password(){if(!this.vault.available())throw new SecurityError('BACKUP_CREDENTIALS');try{return this.vault.open(await readFile(this.secretFile()));}catch{throw new SecurityError('BACKUP_CREDENTIALS');}}
- async state():Promise<BackupState>{this.auth.require('backup.create');this.auth.global();const c=this.config();return {destination:c.backup_destination,scheduled:Boolean(c.backup_scheduled),intervalHours:c.backup_interval_hours,retain:c.backup_retain,keyAvailable:this.vault.available()&&await stat(this.secretFile()).then(()=>true,()=>false),busy:this.busy,history:this.db.prepare('SELECT id,at,kind,status,filename,digest,message FROM backup_history ORDER BY at DESC LIMIT 100').all() as BackupState['history']};}
- private history(kind:string,status:string,filename:string,hash='',actorId:string|null=null,message=''){this.db.prepare('INSERT INTO backup_history VALUES(?,?,?,?,?,?,?,?)').run(randomUUID(),this.now(),kind,status,filename,hash,message,actorId);}
- async configure(input:unknown,destination:string){const d=backupConfigSchema.parse(input);const user=this.auth.reauthenticate(d.currentPassword,'backup.create');this.auth.global();if(d.scheduled&&!this.vault.available())throw new SecurityError('BACKUP_CREDENTIALS');await mkdir(destination,{recursive:true});const canonical=await realpath(destination);const data=resolve(this.dataDir);if(canonical.toLowerCase()===data.toLowerCase()||relative(data,canonical)&&!relative(data,canonical).startsWith('..')&&!relative(data,canonical).includes(':'))throw new SecurityError('BACKUP_DESTINATION');this.auth.require('backup.create');await writeFile(this.secretFile(),this.vault.seal(d.password),{mode:0o600});this.db.transaction(()=>{this.db.prepare('UPDATE security_settings SET backup_destination=?,backup_scheduled=?,backup_interval_hours=?,backup_retain=?,backup_owner=? WHERE id=1').run(canonical,+d.scheduled,d.intervalHours,d.retain,user.id);this.auth.audit('backup.configured','backup','','success','Destination, retention and schedule configured');})();return true;}
- private async removeOwned(dir:string){const parent=resolve(this.root,'recovery');const child=relative(parent,resolve(dir));if(!/^(snapshot|preview|generation)-[\da-f-]{36}$/.test(child))throw new Error('Unsafe staging cleanup');await rm(dir,{recursive:true,force:true});}
- private async makeArchive(password:string,destination:string,kind:string,actorId:string):Promise<string>{const unfreeze=this.auth.freeze();this.busy=true;const temporary=join(this.root,'recovery',`snapshot-${randomUUID()}`);let output='';try{await mkdir(temporary,{recursive:true,mode:0o700});await this.store.onlineSnapshot(join(temporary,'mosque-suite.sqlite3'));if(this.serviceSnapshot)await this.serviceSnapshot(join(temporary,'integration-service.sqlite3'));const files:Archive['files']=[];for(const name of ['mosque-suite.sqlite3','integration-service.sqlite3'] as const){const file=join(temporary,name);if(!await stat(file).then(()=>true,()=>false))continue;const size=(await stat(file)).size;if(size>MAX)throw new SecurityError('BACKUP_INVALID');const bytes=await readFile(file);const db=new Database(file,{readonly:true});try{if(db.pragma('integrity_check',{simple:true})!=='ok'||db.pragma('foreign_key_check').length)throw new SecurityError('BACKUP_INVALID');}finally{db.close();}files.push({name,size:bytes.length,sha256:digest(bytes),data:bytes.toString('base64')});bytes.fill(0);}
-  if(files.reduce((sum,f)=>sum+f.size,0)>MAX)throw new SecurityError('BACKUP_INVALID');const mosque=(this.db.prepare('SELECT name FROM mosque_settings WHERE id=1').get() as {name:string}).name;const archive:Archive={version:1,workspaceId:this.auth.workspaceId,createdAt:new Date(this.now()).toISOString(),schemaVersion:this.store.getSchemaVersion(),mosque,files};const encrypted=encryptArchive(archive,password);if(encrypted.length>MAX)throw new SecurityError('BACKUP_INVALID');await mkdir(destination,{recursive:true});const canonical=await realpath(destination);const filename=`MosqueSuite-${this.auth.workspaceId}-${archive.createdAt.replace(/[:.]/g,'-')}-${randomUUID()}.msbackup`;output=join(canonical,filename);const staging=output+'.tmp';try{await writeFile(staging,encrypted,{flag:'wx',mode:0o600});const verified=decryptArchive(await readFile(staging),password);if(verified.workspaceId!==archive.workspaceId)throw new SecurityError('BACKUP_INVALID');await rename(staging,output);}finally{await rm(staging,{force:true});}this.history(kind,'verified',output,digest(encrypted),actorId);this.auth.audit('backup.created','backup',filename,'success','Authenticated encrypted snapshot verified',actorId);this.db.prepare('UPDATE security_settings SET backup_last_at=? WHERE id=1').run(this.now());return output;
- }catch(error){this.history(kind,'failed','','',actorId,'Backup failed; no archive was activated');this.auth.audit('backup.failed','backup','','failure','Backup failed; details redacted',actorId);throw error;}finally{await this.removeOwned(temporary);unfreeze();this.busy=false;}}
- async create(password:string){const user=this.auth.require('backup.create');this.auth.global();const c=this.config();if(!c.backup_destination)throw new SecurityError('BACKUP_DESTINATION');const secret=password||await this.password();this.auth.require('backup.create');await this.makeArchive(secret,c.backup_destination,'manual',user.id);await this.retention();return true;}
- private async retention(){const c=this.config();const rows=this.db.prepare("SELECT filename,digest FROM backup_history WHERE kind IN('manual','scheduled') AND status='verified' ORDER BY at DESC").all() as {filename:string;digest:string}[];for(const row of rows.slice(c.backup_retain)){const dir=await realpath(c.backup_destination);const relativeName=relative(dir,resolve(row.filename));if(relativeName!==basename(row.filename)||!relativeName.startsWith(`MosqueSuite-${this.auth.workspaceId}-`)||!relativeName.endsWith('.msbackup'))continue;try{if((await lstat(row.filename)).isSymbolicLink())continue;const bytes=await readFile(row.filename);if(digest(bytes)!==row.digest)continue;await rm(row.filename);this.history('retention','deleted',row.filename,row.digest,c.backup_owner);}catch{/* Missing/offline destinations are retained in history. */}}}
- async scheduled(){if(this.busy||this.preview)return;const c=this.config();if(!c.backup_scheduled||!c.backup_owner||this.now()-c.backup_last_at<c.backup_interval_hours*3600000)return;try{const actorId=this.auth.scheduledOwner(c.backup_owner);await this.makeArchive(await this.password(),c.backup_destination,'scheduled',actorId);await this.retention();}catch{this.db.prepare('UPDATE security_settings SET backup_last_at=? WHERE id=1').run(this.now());}}
- async clearPreview(){if(this.preview){const p=this.preview;this.preview=null;p.password.fill(0);await this.removeOwned(p.dir);}}
- async inspect(filename:string,password:string):Promise<BackupPreview>{const actor=this.auth.require('backup.restore');this.auth.global();await this.clearPreview();if((await stat(filename)).size>MAX)throw new SecurityError('BACKUP_INVALID');let archive:Archive;try{archive=decryptArchive(await readFile(filename),password);}catch(e){this.auth.audit('backup.verification_failed','backup','','failure','Invalid credentials or damaged archive');throw e;}if(archive.schemaVersion>migrations.at(-1)!.version)throw new SecurityError('BACKUP_VERSION');const generation=`generation-${randomUUID()}`,dir=join(this.root,'recovery',generation);try{await mkdir(dir,{recursive:true,mode:0o700});for(const file of archive.files)await writeFile(join(dir,file.name),Buffer.from(file.data,'base64'),{flag:'wx',mode:0o600});const database=new Database(join(dir,'mosque-suite.sqlite3'));let preview:BackupPreview;try{database.pragma('foreign_keys=ON');if(database.pragma('integrity_check',{simple:true})!=='ok'||database.pragma('foreign_key_check').length)throw new SecurityError('BACKUP_INVALID');migrate(database);const auth=new SecurityStore(database);if(auth.workspaceId!==archive.workspaceId||!auth.integrity()||!(database.prepare("SELECT 1 FROM staff_users WHERE role_id='super_admin' AND active=1 AND all_wards=1").get()))throw new SecurityError('BACKUP_INVALID');const count=(table:string)=>(database.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as {n:number}).n;preview={id:randomUUID(),createdAt:archive.createdAt,mosque:archive.mosque,schemaVersion:archive.schemaVersion,families:count('families'),members:count('members'),payments:count('payments'),staff:count('staff_users'),attachments:count('event_documents'),serviceIncluded:archive.files.length===2,expiresAt:this.now()+600000};if(preview.serviceIncluded){const service=new Database(join(dir,'integration-service.sqlite3'),{readonly:true});try{const local=database.prepare('SELECT workspace_id FROM integration_sync_state WHERE id=1').get() as {workspace_id:string}|undefined;const remote=service.prepare('SELECT workspace_id FROM service_state WHERE id=1').get() as {workspace_id:string}|undefined;if(service.pragma('integrity_check',{simple:true})!=='ok'||service.pragma('user_version',{simple:true})!==1||service.pragma('foreign_key_check').length||remote&&local?.workspace_id!==remote.workspace_id)throw new SecurityError('BACKUP_INVALID');}finally{service.close();}}else if(count('online_payment_events')||count('notification_jobs')||count('payment_links'))throw new SecurityError('BACKUP_INVALID');}finally{database.close();}this.auth.require('backup.restore');this.preview={id:preview.id,dir,generation,password:Buffer.from(password),expires:preview.expiresAt,actorId:actor.id};this.auth.audit('backup.previewed','backup',preview.id);return preview;}catch(e){await this.removeOwned(dir);throw e;}}
- async restore(input:unknown){const d=backupRestoreSchema.parse(input);const actor=this.auth.reauthenticate(d.currentPassword,'backup.restore');this.auth.global();const p=this.preview;if(!p||p.id!==d.previewId||p.expires<this.now()||p.actorId!==actor.id)throw new SecurityError('BACKUP_EXPIRED');await this.makeArchive(p.password.toString('utf8'),this.config().backup_destination||join(this.root,'safety-backups'),'restore_safety',actor.id);this.auth.require('backup.restore');const unfreeze=this.auth.freeze();try{const database=new Database(join(p.dir,'mosque-suite.sqlite3'));try{database.pragma('foreign_keys=ON');const restored=new SecurityStore(database);if(!restored.integrity()||database.pragma('integrity_check',{simple:true})!=='ok'||database.pragma('foreign_key_check').length)throw new SecurityError('BACKUP_INVALID');database.prepare('UPDATE security_settings SET backup_scheduled=0,backup_owner=NULL WHERE id=1').run();const present=database.prepare('SELECT 1 FROM staff_users WHERE id=?').get(actor.id);restored.audit('backup.restored','backup',p.id,'success',`Verified restore authorized by account ${actor.id}; previous generation retained`,present?actor.id:null);database.pragma('wal_checkpoint(TRUNCATE)');}finally{database.close();}this.auth.audit('restore.activated','backup',p.id,'success','Verified generation activated; encrypted safety snapshot retained',actor.id);activateWorkspace(this.root,p.generation);this.preview=null;p.password.fill(0);this.auth.logout();this.restart();return null;}catch(e){unfreeze();throw e;}}
- async dispose(){await this.clearPreview();}
+  private busy = false;
+  private preview: {
+    id: string;
+    dir: string;
+    generation: string;
+    password: Buffer;
+    expires: number;
+    actorId: string;
+  } | null = null;
+  constructor(
+    private readonly store: WorkspaceStore,
+    private readonly root: string,
+    private readonly dataDir: string,
+    private readonly vault: SecretVault,
+    private readonly serviceSnapshot?: (path: string) => Promise<void>,
+    private readonly restart: () => void = () => {},
+    private readonly now: () => number = Date.now,
+  ) {}
+  private get auth() {
+    return this.store.security;
+  }
+  private get db() {
+    return this.auth.db;
+  }
+  private config() {
+    return this.db
+      .prepare("SELECT * FROM security_settings WHERE id=1")
+      .get() as Config;
+  }
+  private secretFile() {
+    return join(this.root, "backup-key.dpapi");
+  }
+  private async password() {
+    if (!this.vault.available()) throw new SecurityError("BACKUP_CREDENTIALS");
+    try {
+      return this.vault.open(await readFile(this.secretFile()));
+    } catch {
+      throw new SecurityError("BACKUP_CREDENTIALS");
+    }
+  }
+  async state(): Promise<BackupState> {
+    this.auth.require("backup.create");
+    this.auth.global();
+    const c = this.config();
+    return {
+      destination: c.backup_destination,
+      scheduled: Boolean(c.backup_scheduled),
+      intervalHours: c.backup_interval_hours,
+      retain: c.backup_retain,
+      keyAvailable:
+        this.vault.available() &&
+        (await stat(this.secretFile()).then(
+          () => true,
+          () => false,
+        )),
+      busy: this.busy,
+      history: this.db
+        .prepare(
+          "SELECT id,at,kind,status,filename,digest,message FROM backup_history ORDER BY at DESC LIMIT 100",
+        )
+        .all() as BackupState["history"],
+    };
+  }
+  private history(
+    kind: string,
+    status: string,
+    filename: string,
+    hash = "",
+    actorId: string | null = null,
+    message = "",
+  ) {
+    this.db
+      .prepare("INSERT INTO backup_history VALUES(?,?,?,?,?,?,?,?)")
+      .run(
+        randomUUID(),
+        this.now(),
+        kind,
+        status,
+        filename,
+        hash,
+        message,
+        actorId,
+      );
+  }
+  async configure(input: unknown, destination: string) {
+    const d = backupConfigSchema.parse(input);
+    const user = this.auth.reauthenticate(d.currentPassword, "backup.create");
+    this.auth.global();
+    if (d.scheduled && !this.vault.available())
+      throw new SecurityError("BACKUP_CREDENTIALS");
+    await mkdir(destination, { recursive: true });
+    const canonical = await realpath(destination);
+    for (const location of [this.root, this.dataDir]) {
+      const data = resolve(location);
+      if (
+        canonical.toLowerCase() === data.toLowerCase() ||
+        (relative(data, canonical) &&
+          !relative(data, canonical).startsWith("..") &&
+          !relative(data, canonical).includes(":"))
+      )
+        throw new SecurityError("BACKUP_DESTINATION");
+    }
+    this.auth.require("backup.create");
+    if (this.vault.available())
+      await atomicPrivateFile(this.secretFile(), this.vault.seal(d.password));
+    else await rm(this.secretFile(), { force: true });
+    this.db.transaction(() => {
+      this.db
+        .prepare(
+          "UPDATE security_settings SET backup_destination=?,backup_scheduled=?,backup_interval_hours=?,backup_retain=?,backup_owner=? WHERE id=1",
+        )
+        .run(canonical, +d.scheduled, d.intervalHours, d.retain, user.id);
+      this.auth.audit(
+        "backup.configured",
+        "backup",
+        "",
+        "success",
+        "Destination, retention and schedule configured",
+      );
+    })();
+    return true;
+  }
+  private async removeOwned(dir: string) {
+    const parent = resolve(this.root, "recovery");
+    const child = relative(parent, resolve(dir));
+    if (!/^(snapshot|preview|generation)-[\da-f-]{36}$/.test(child))
+      throw new Error("Unsafe staging cleanup");
+    await rm(dir, { recursive: true, force: true });
+  }
+  private async makeArchive(
+    password: string,
+    destination: string,
+    kind: string,
+    actorId: string,
+  ): Promise<string> {
+    const unfreeze = this.auth.freeze();
+    this.busy = true;
+    const temporary = join(this.root, "recovery", `snapshot-${randomUUID()}`);
+    let output = "";
+    try {
+      await mkdir(temporary, { recursive: true, mode: 0o700 });
+      await this.store.onlineSnapshot(join(temporary, "mosque-suite.sqlite3"));
+      if (this.serviceSnapshot)
+        await this.serviceSnapshot(
+          join(temporary, "integration-service.sqlite3"),
+        );
+      const files: Archive["files"] = [];
+      for (const name of [
+        "mosque-suite.sqlite3",
+        "integration-service.sqlite3",
+      ] as const) {
+        const file = join(temporary, name);
+        if (
+          !(await stat(file).then(
+            () => true,
+            () => false,
+          ))
+        )
+          continue;
+        const size = (await stat(file)).size;
+        if (size > MAX) throw new SecurityError("BACKUP_INVALID");
+        const bytes = await readFile(file);
+        const db = new Database(file, { readonly: true });
+        try {
+          if (
+            db.pragma("integrity_check", { simple: true }) !== "ok" ||
+            (db.pragma("foreign_key_check") as unknown[]).length
+          )
+            throw new SecurityError("BACKUP_INVALID");
+        } finally {
+          db.close();
+        }
+        files.push({
+          name,
+          size: bytes.length,
+          sha256: digest(bytes),
+          data: bytes.toString("base64"),
+        });
+        bytes.fill(0);
+      }
+      if (files.reduce((sum, f) => sum + f.size, 0) > MAX)
+        throw new SecurityError("BACKUP_INVALID");
+      const mosque = (
+        this.db
+          .prepare("SELECT name FROM mosque_settings WHERE id=1")
+          .get() as { name: string }
+      ).name;
+      const archive: Archive = {
+        version: 1,
+        workspaceId: this.auth.workspaceId,
+        createdAt: new Date(this.now()).toISOString(),
+        schemaVersion: this.store.getSchemaVersion(),
+        mosque,
+        files,
+      };
+      const encrypted = encryptArchive(archive, password);
+      if (encrypted.length > MAX) throw new SecurityError("BACKUP_INVALID");
+      await mkdir(destination, { recursive: true });
+      const canonical = await realpath(destination);
+      const filename = `MosqueSuite-${this.auth.workspaceId}-${archive.createdAt.replace(/[:.]/g, "-")}-${randomUUID()}.msbackup`;
+      output = join(canonical, filename);
+      const staging = output + ".tmp";
+      try {
+        await writeFile(staging, encrypted, { flag: "wx", mode: 0o600 });
+        const verified = decryptArchive(await readFile(staging), password);
+        if (verified.workspaceId !== archive.workspaceId)
+          throw new SecurityError("BACKUP_INVALID");
+        await rename(staging, output);
+      } finally {
+        await rm(staging, { force: true });
+      }
+      this.history(kind, "verified", output, digest(encrypted), actorId);
+      this.auth.audit(
+        "backup.created",
+        "backup",
+        filename,
+        "success",
+        "Authenticated encrypted snapshot verified",
+        actorId,
+      );
+      this.db
+        .prepare("UPDATE security_settings SET backup_last_at=? WHERE id=1")
+        .run(this.now());
+      return output;
+    } catch (error) {
+      this.history(
+        kind,
+        "failed",
+        "",
+        "",
+        actorId,
+        "Backup failed; no archive was activated",
+      );
+      this.auth.audit(
+        "backup.failed",
+        "backup",
+        "",
+        "failure",
+        "Backup failed; details redacted",
+        actorId,
+      );
+      throw error;
+    } finally {
+      try {
+        await this.removeOwned(temporary);
+      } finally {
+        unfreeze();
+        this.busy = false;
+      }
+    }
+  }
+  async create(password: string) {
+    const user = this.auth.require("backup.create");
+    this.auth.global();
+    const c = this.config();
+    if (!c.backup_destination) throw new SecurityError("BACKUP_DESTINATION");
+    const secret = password || (await this.password());
+    this.auth.require("backup.create");
+    await this.makeArchive(secret, c.backup_destination, "manual", user.id);
+    await this.retention();
+    return true;
+  }
+  private async retention() {
+    const c = this.config();
+    const rows = this.db
+      .prepare(
+        "SELECT filename,digest FROM backup_history WHERE kind IN('manual','scheduled') AND status='verified' ORDER BY at DESC",
+      )
+      .all() as { filename: string; digest: string }[];
+    for (const row of rows.slice(c.backup_retain)) {
+      const dir = await realpath(c.backup_destination);
+      const relativeName = relative(dir, resolve(row.filename));
+      if (
+        relativeName !== basename(row.filename) ||
+        !relativeName.startsWith(`MosqueSuite-${this.auth.workspaceId}-`) ||
+        !relativeName.endsWith(".msbackup")
+      )
+        continue;
+      try {
+        if ((await lstat(row.filename)).isSymbolicLink()) continue;
+        const bytes = await readFile(row.filename);
+        if (digest(bytes) !== row.digest) continue;
+        await rm(row.filename);
+        this.history(
+          "retention",
+          "deleted",
+          row.filename,
+          row.digest,
+          c.backup_owner,
+        );
+      } catch {
+        /* Missing/offline destinations are retained in history. */
+      }
+    }
+  }
+  async scheduled() {
+    await this.expirePreview();
+    if (this.busy || this.preview) return;
+    const c = this.config();
+    if (
+      !c.backup_scheduled ||
+      !c.backup_owner ||
+      this.now() - c.backup_last_at < c.backup_interval_hours * 3600000
+    )
+      return;
+    try {
+      const actorId = this.auth.scheduledOwner(c.backup_owner);
+      await this.makeArchive(
+        await this.password(),
+        c.backup_destination,
+        "scheduled",
+        actorId,
+      );
+      await this.retention();
+    } catch {
+      this.db
+        .prepare("UPDATE security_settings SET backup_last_at=? WHERE id=1")
+        .run(this.now());
+    }
+  }
+  async expirePreview() {
+    if (this.preview && this.preview.expires < this.now())
+      await this.clearPreview();
+  }
+  async clearPreview() {
+    if (this.preview) {
+      const p = this.preview;
+      this.preview = null;
+      p.password.fill(0);
+      await this.removeOwned(p.dir);
+    }
+  }
+  async inspect(filename: string, password: string): Promise<BackupPreview> {
+    const actor = this.auth.require("backup.restore");
+    this.auth.global();
+    await this.clearPreview();
+    let archive: Archive;
+    try {
+      archive = decryptArchive(await readBounded(filename, MAX), password);
+    } catch (e) {
+      this.auth.audit(
+        "backup.verification_failed",
+        "backup",
+        "",
+        "failure",
+        "Invalid credentials or damaged archive",
+      );
+      throw e;
+    }
+    if (archive.schemaVersion > migrations.at(-1)!.version)
+      throw new SecurityError("BACKUP_VERSION");
+    const generation = `generation-${randomUUID()}`,
+      dir = join(this.root, "recovery", generation);
+    try {
+      await mkdir(dir, { recursive: true, mode: 0o700 });
+      for (const file of archive.files)
+        await writeFile(
+          join(dir, file.name),
+          Buffer.from(file.data, "base64"),
+          { flag: "wx", mode: 0o600 },
+        );
+      const database = new Database(join(dir, "mosque-suite.sqlite3"));
+      let preview: BackupPreview;
+      try {
+        database.pragma("foreign_keys=ON");
+        if (
+          database.pragma("integrity_check", { simple: true }) !== "ok" ||
+          (database.pragma("foreign_key_check") as unknown[]).length
+        )
+          throw new SecurityError("BACKUP_INVALID");
+        migrate(database);
+        const auth = new SecurityStore(database);
+        if (
+          auth.workspaceId !== archive.workspaceId ||
+          !auth.integrity() ||
+          !database
+            .prepare(
+              "SELECT 1 FROM staff_users WHERE role_id='super_admin' AND active=1 AND all_wards=1",
+            )
+            .get()
+        )
+          throw new SecurityError("BACKUP_INVALID");
+        const count = (table: string) =>
+          (
+            database.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as {
+              n: number;
+            }
+          ).n;
+        preview = {
+          id: randomUUID(),
+          createdAt: archive.createdAt,
+          mosque: archive.mosque,
+          schemaVersion: archive.schemaVersion,
+          families: count("families"),
+          members: count("members"),
+          payments: count("payments"),
+          staff: count("staff_users"),
+          attachments: count("event_documents"),
+          serviceIncluded: archive.files.length === 2,
+          expiresAt: this.now() + 600000,
+        };
+        if (preview.serviceIncluded) {
+          const service = new Database(
+            join(dir, "integration-service.sqlite3"),
+            { readonly: true },
+          );
+          try {
+            const local = database
+              .prepare(
+                "SELECT workspace_id FROM integration_sync_state WHERE id=1",
+              )
+              .get() as { workspace_id: string } | undefined;
+            const remote = service
+              .prepare("SELECT workspace_id FROM service_state WHERE id=1")
+              .get() as { workspace_id: string } | undefined;
+            if (
+              service.pragma("integrity_check", { simple: true }) !== "ok" ||
+              service.pragma("user_version", { simple: true }) !== 1 ||
+              (service.pragma("foreign_key_check") as unknown[]).length ||
+              (remote && local?.workspace_id !== remote.workspace_id)
+            )
+              throw new SecurityError("BACKUP_INVALID");
+          } finally {
+            service.close();
+          }
+        } else if (
+          count("online_payment_events") ||
+          count("notification_jobs") ||
+          count("payment_links")
+        )
+          throw new SecurityError("BACKUP_INVALID");
+      } finally {
+        database.close();
+      }
+      this.auth.require("backup.restore");
+      this.preview = {
+        id: preview.id,
+        dir,
+        generation,
+        password: Buffer.from(password),
+        expires: preview.expiresAt,
+        actorId: actor.id,
+      };
+      this.auth.audit("backup.previewed", "backup", preview.id);
+      return preview;
+    } catch (e) {
+      await this.removeOwned(dir);
+      throw e;
+    }
+  }
+  async restore(input: unknown) {
+    const d = backupRestoreSchema.parse(input);
+    const actor = this.auth.reauthenticate(d.currentPassword, "backup.restore");
+    this.auth.global();
+    const p = this.preview;
+    if (
+      !p ||
+      p.id !== d.previewId ||
+      p.expires < this.now() ||
+      p.actorId !== actor.id
+    )
+      throw new SecurityError("BACKUP_EXPIRED");
+    await this.makeArchive(
+      p.password.toString("utf8"),
+      this.config().backup_destination || join(this.root, "safety-backups"),
+      "restore_safety",
+      actor.id,
+    );
+    this.auth.require("backup.restore");
+    const unfreeze = this.auth.freeze();
+    try {
+      const database = new Database(join(p.dir, "mosque-suite.sqlite3"));
+      try {
+        database.pragma("foreign_keys=ON");
+        const restored = new SecurityStore(database);
+        if (
+          !restored.integrity() ||
+          database.pragma("integrity_check", { simple: true }) !== "ok" ||
+          (database.pragma("foreign_key_check") as unknown[]).length
+        )
+          throw new SecurityError("BACKUP_INVALID");
+        database
+          .prepare(
+            "UPDATE security_settings SET backup_scheduled=0,backup_owner=NULL WHERE id=1",
+          )
+          .run();
+        const present = database
+          .prepare("SELECT 1 FROM staff_users WHERE id=?")
+          .get(actor.id);
+        restored.audit(
+          "backup.restored",
+          "backup",
+          p.id,
+          "success",
+          `Verified restore authorized by account ${actor.id}; previous generation retained`,
+          present ? actor.id : null,
+        );
+        database.pragma("wal_checkpoint(TRUNCATE)");
+      } finally {
+        database.close();
+      }
+      this.auth.audit(
+        "restore.prepared",
+        "backup",
+        p.id,
+        "success",
+        "Verified generation prepared; encrypted safety snapshot retained",
+        actor.id,
+      );
+      activateWorkspace(this.root, p.generation);
+      this.preview = null;
+      p.password.fill(0);
+      await rm(this.secretFile(), { force: true }).catch(() => {});
+      this.auth.logout();
+      this.restart();
+      return null;
+    } catch (e) {
+      unfreeze();
+      throw e;
+    }
+  }
+  async dispose() {
+    await this.clearPreview();
+  }
 }

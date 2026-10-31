@@ -3,7 +3,7 @@ import { mkdtempSync,rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import { WorkspaceStore } from '../../electron/database/store';
+import { WorkspaceStore, setTestStaffRole } from '../fixtures/authenticated-store';
 import { migrate,migrations } from '../../electron/database/migrations';
 import { RegistrationStore } from '../../electron/database/registration-store';
 import { LifeEventsStore } from '../../electron/database/life-events-store';
@@ -95,7 +95,7 @@ describe('financial accounting',()=>{
     s.finance.donation({key:key(),amountPaise:20000,date:'2026-02-15',method:'cash',reference:'',notes:'Fictional',duplicateReason:'',confirmation,fundId:'fund-zakat',familyId:'',donor:'Hidden donor',anonymous:true,receivedBy:'Fictional Clerk'});
     s.finance.saveConfig({key:key(),revision:0,receiptPrefix:'DEMO',approvalThresholdPaise:0,approveAllExpenses:true});
     const request=s.finance.expense({key:key(),amountPaise:5000,date:'2026-02-16',method:'cash',reference:'',notes:'Fictional',duplicateReason:'',confirmation,fundId:'fund-zakat',categoryId:'expense-charity',wardId:'',description:'Fictional relief',payee:'Fictional Payee',billReference:'DEMO-BILL',authorizedBy:'Fictional Approver',recordedBy:'Fictional Clerk'});
-    expect(request.pending).toBe(true);expect(s.finance.setup().funds.find(f=>f.id==='fund-zakat')?.balancePaise).toBe(20000);s.finance.setRole({role:'accountant'});expect(()=>s.finance.decideExpense({key:key(),id:request.id,decision:'approve',reason:'Fictional approval',confirmation})).toThrow('FINANCE_PERMISSION');s.finance.setRole({role:'administrator'});
+    expect(request.pending).toBe(true);expect(s.finance.setup().funds.find(f=>f.id==='fund-zakat')?.balancePaise).toBe(20000);setTestStaffRole(s,'accountant');expect(()=>s.finance.decideExpense({key:key(),id:request.id,decision:'approve',reason:'Fictional approval',confirmation})).toThrow('AUTH_PERMISSION');setTestStaffRole(s,'administrator');
     s.finance.decideExpense({key:key(),id:request.id,decision:'approve',reason:'Fictional approval',confirmation});expect(s.finance.setup().funds.find(f=>f.id==='fund-zakat')?.balancePaise).toBe(15000);
     const dashboard=s.finance.dashboard(filters);expect(dashboard).toMatchObject({collectedPaise:10000,donationPaise:20000,expensePaise:5000,netCashPaise:25000});
     for(const kind of ['daily','methods','ledger'] as const)expect(s.finance.report({kind,filters,familyId:''}).totals.netCashPaise).toBe(25000);
@@ -103,11 +103,11 @@ describe('financial accounting',()=>{
   });
   it('rejects actions outside the isolated demo and enforces host-owned demo roles',()=>{
     const ordinary=open(':memory:',false);expect(()=>ordinary.finance.setup()).toThrow('FINANCE_DEMO_ONLY');expect(()=>ordinary.finance.payment({})).toThrow('FINANCE_DEMO_ONLY');
-    const s=open();s.finance.setRole({role:'viewer'});expect(s.finance.setup().session.role).toBe('viewer');expect(()=>s.finance.payment({})).toThrow('FINANCE_PERMISSION');expect(()=>s.finance.savePlan({})).toThrow('FINANCE_PERMISSION');expect(s.finance.dashboard(filters).netCashPaise).toBe(0);
+    const s=open();setTestStaffRole(s,'viewer');expect(s.finance.setup().session.role).toBe('viewer');expect(()=>s.finance.payment({})).toThrow('AUTH_PERMISSION');expect(()=>s.finance.savePlan({})).toThrow('AUTH_PERMISSION');expect(s.finance.dashboard(filters).netCashPaise).toBe(0);
   });
   it('persists financial data and makes a valid SQLite snapshot including WAL transactions',async()=>{
     const dir=mkdtempSync(join(tmpdir(),'mosque-finance-'));dirs.push(dir);const path=join(dir,'workspace.sqlite3');const s=open(path);const {family,plan}=fixture(s);generate(s,plan.id);const p=s.finance.payment(payment(family.id,10000));
-    const snapshot=join(dir,'safe-backup.sqlite3');await s.finance.backup(snapshot);const db=new Database(snapshot,{readonly:true});try{expect(db.pragma('quick_check',{simple:true})).toBe('ok');expect(db.prepare('SELECT COUNT(*) AS n FROM receipts').get()).toEqual({n:1});}finally{db.close();}
+    const snapshot=join(dir,'safe-backup.sqlite3');await s.onlineSnapshot(snapshot);const db=new Database(snapshot,{readonly:true});try{expect(db.pragma('quick_check',{simple:true})).toBe('ok');expect(db.prepare('SELECT COUNT(*) AS n FROM receipts').get()).toEqual({n:1});}finally{db.close();}
     s.close();const reopened=open(path);expect(reopened.finance.family({id:family.id}).outstandingPaise).toBe(20000);expect((await reopened.finance.receipt({id:p.receiptId})).snapshot.guardian).toContain('അമീൻ');
     const raw=new Database(path);try{expect(()=>raw.exec('DELETE FROM financial_transactions')).toThrow('immutable');expect(()=>raw.exec("UPDATE receipts SET number='changed'")).toThrow('immutable');raw.exec("CREATE TRIGGER fail_finance_audit BEFORE INSERT ON transaction_audit_log BEGIN SELECT RAISE(ABORT,'simulated failure'); END");}finally{raw.close();}
     expect(()=>reopened.finance.payment(payment(family.id,5000))).toThrow('simulated failure');expect(reopened.finance.family({id:family.id}).transactions).toHaveLength(1);

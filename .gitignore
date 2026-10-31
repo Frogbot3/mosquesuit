@@ -13,3 +13,11 @@ tmp/
 *.sqlite*
 *.log
 .DS_Store
+
+# Local recovery credentials and encrypted archives must never enter source control.
+/Mosque-Suite-Recovery.json
+*Recovery*.json
+*recovery*.json
+*.msbackup
+*.dpapi
+active-workspace*.json

@@ -1,3 +1,4 @@
+import { authorizeIpc } from './ipc-authorization';
 import { SecurityError } from '../shared/security';
 import { ipcMain,type BrowserWindow } from 'electron';
 import { z } from 'zod';
@@ -6,13 +7,13 @@ import { emptyRequest,type Result } from '../shared/contracts';
 import { adjustmentSchema,assignmentSchema,correctionSchema,creditSchema,donationSchema,expenseDecisionSchema,expenseSchema,financeCategorySchema,financeConfigSchema,financeFilterSchema,financeIdSchema,financeLogoSchema,financeOutputSchema,financeReportSchema,financeRoleSchema,fundSchema,generateSchema,paymentSchema,planSchema,policySchema,FinanceError } from '../shared/finance';
 import type { WorkspaceStore } from './database/store';
 import { isTrustedDocument } from './security';
-import { chooseFinanceLogo,outputFinance,backupFinance } from './finance-output';
+import { chooseFinanceLogo,outputFinance } from './finance-output';
 
 export function registerFinanceIpc(window:BrowserWindow,store:WorkspaceStore,development:boolean,rendererRoot:string){
   function handle<S extends z.ZodType,T>(channel:string,schema:S,run:(input:z.output<S>)=>T|Promise<T>){
     ipcMain.handle(channel,async(event,input:unknown):Promise<Result<T>>=>{
       if(event.sender!==window.webContents||!event.senderFrame||event.senderFrame!==event.sender.mainFrame||!isTrustedDocument(event.senderFrame.url,development))return {ok:false,error:{code:'FORBIDDEN',message:'Request denied.'}};
-      try{store.finance.require();const parsed=schema.safeParse(input);if(!parsed.success)return {ok:false,error:{code:'VALIDATION',message:'Check the supplied values.'}};return {ok:true,data:await run(parsed.data)};}
+      try{store.finance.require();const parsed=schema.safeParse(input);if(!parsed.success)return {ok:false,error:{code:'VALIDATION',message:'Check the supplied values.'}};authorizeIpc(store.security,channel,parsed.data);return {ok:true,data:await store.security.operation(()=>run(parsed.data))};}
       catch(error){return {ok:false,error:{code:error instanceof SecurityError||error instanceof FinanceError?error.code:'STORAGE',message:'The financial operation could not be completed.'}};}
     });
   }
@@ -40,5 +41,5 @@ export function registerFinanceIpc(window:BrowserWindow,store:WorkspaceStore,dev
   handle(C.saveFinanceConfig,financeConfigSchema,d=>store.finance.saveConfig(d));
   handle(C.chooseFinanceLogo,financeLogoSchema,d=>chooseFinanceLogo(window,store,d));
   handle(C.outputFinanceDocument,financeOutputSchema,d=>outputFinance(window,store,rendererRoot,d));
-  handle(C.backupFinance,emptyRequest,()=>backupFinance(window,store));
+  handle(C.backupFinance,emptyRequest,()=>{throw new SecurityError('AUTH_PERMISSION');});
 }

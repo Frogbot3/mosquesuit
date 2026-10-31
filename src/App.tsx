@@ -2,11 +2,20 @@ import { createHashRouter, Link, RouterProvider } from 'react-router-dom';
 import { WorkspaceProvider } from './components/WorkspaceProvider';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
+import { SecurityProvider } from './components/SecurityProvider';
 
 const router = createHashRouter([{
-  element: <WorkspaceProvider><Layout /></WorkspaceProvider>,
+  element: <SecurityProvider><WorkspaceProvider><Layout /></WorkspaceProvider></SecurityProvider>,
   errorElement: <main className="startup"><h1>Unable to open this page</h1><p>Restart Mosque Suite to reopen the local workspace.</p></main>,
   children: [
+    { path:'staff',lazy:async()=>({Component:(await import('./pages/Security')).StaffDirectory}) },
+    { path:'staff/new',lazy:async()=>({Component:(await import('./pages/Security')).StaffProfile}) },
+    { path:'staff/roles',lazy:async()=>({Component:(await import('./pages/Security')).RoleEditor}) },
+    { path:'staff/:id',lazy:async()=>({Component:(await import('./pages/Security')).StaffProfile}) },
+    { path:'audit',lazy:async()=>({Component:(await import('./pages/Security')).AuditHistory}) },
+    { path:'backup',lazy:async()=>({Component:(await import('./pages/Security')).BackupDashboard}) },
+    { path:'backup/restore',lazy:async()=>({Component:(await import('./pages/Security')).RestoreWizard}) },
+    { path:'security',lazy:async()=>({Component:(await import('./pages/Security')).SecuritySettings}) },
     { index: true, element: <Dashboard /> },
     { path: 'wards', lazy: async () => ({ Component: (await import('./pages/Wards')).Wards }) },
     { path: 'families', lazy: async () => ({ Component: (await import('./pages/Families')).Families }) },

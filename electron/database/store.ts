@@ -93,7 +93,7 @@ export class WorkspaceStore {
     this.db.transaction(() => {
       this.db.prepare(`UPDATE mosque_settings SET name='Demo Mosque',name_ml='മാതൃകാ പള്ളി',address='',contact='',
         locale='en',theme='light',revision=revision+1 WHERE id=1`).run();
-      this.db.prepare("INSERT INTO audit_events (kind) VALUES ('demo.reset')").run();
+      this.db.prepare("INSERT INTO audit_events (kind) VALUES ('demo.reset')").run();this.security.audit('settings.demo_reset','settings','1');
     })();
   }
 

@@ -1,3 +1,4 @@
+import { authorizeIpc } from './ipc-authorization';
 import { SecurityError } from '../shared/security';
 import { ipcMain, type BrowserWindow } from 'electron';
 import { z } from 'zod';
@@ -12,7 +13,7 @@ export function registerLifeEventsIpc(window: BrowserWindow,store:WorkspaceStore
   function handle<S extends z.ZodType,T>(channel:string,schema:S,action:(input:z.output<S>)=>T|Promise<T>) {
     ipcMain.handle(channel,async(event,input:unknown):Promise<Result<T>>=>{
       if(event.sender!==window.webContents || !event.senderFrame || event.senderFrame!==event.sender.mainFrame || !isTrustedDocument(event.senderFrame.url,development)) return {ok:false,error:{code:'FORBIDDEN',message:'Request denied.'}};
-      try { store.lifeEvents.requireDemo(); const parsed=schema.safeParse(input); if(!parsed.success) return {ok:false,error:{code:'VALIDATION',message:'Check the supplied fields.'}}; return {ok:true,data:await action(parsed.data)}; }
+      try { store.lifeEvents.requireDemo(); const parsed=schema.safeParse(input); if(!parsed.success) return {ok:false,error:{code:'VALIDATION',message:'Check the supplied fields.'}}; authorizeIpc(store.security,channel,parsed.data);return {ok:true,data:await store.security.operation(()=>action(parsed.data))}; }
       catch(error) { return {ok:false,error:{code:error instanceof SecurityError||error instanceof LifeEventError?error.code:'STORAGE',message:'The operation could not be completed.'}}; }
     });
   }
