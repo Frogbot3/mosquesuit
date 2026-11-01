@@ -12,6 +12,7 @@ import {
   atomicPrivateFile,
 } from "./secure-files";
 import { printDocuments } from "./event-output";
+import { securityText } from '../shared/security-labels';
 import { z } from "zod";
 import {
   securityChannels as C,
@@ -113,10 +114,9 @@ export function registerSecurityIpc(
   }
   async function recoveryDestination() {
     const selected = await dialog.showSaveDialog(window, {
-      title:
-        "Save one-time offline recovery file — keep separately from backups",
+      title: securityText(auth.state().locale, 'recoverySaveTitle') + ' / ' + securityText('ml', 'recoveryFile'),
       defaultPath: join(app.getPath("documents"), "Mosque-Suite-Recovery.json"),
-      filters: [{ name: "Offline recovery file", extensions: ["json"] }],
+      filters: [{ name: securityText(auth.state().locale, 'recoveryFile'), extensions: ["json"] }],
     });
     if (selected.canceled || !selected.filePath)
       throw new SecurityError("AUTH_INVALID");
@@ -164,9 +164,9 @@ export function registerSecurityIpc(
     z.object({ newPassword: passwordSchema }).strict(),
     async (d) => {
       const selected = await dialog.showOpenDialog(window, {
-        title: "Choose one-time offline recovery file",
+        title: securityText(auth.state().locale, 'recoveryOpenTitle') + ' / ' + securityText('ml', 'recoveryFile'),
         properties: ["openFile"],
-        filters: [{ name: "Recovery file", extensions: ["json"] }],
+        filters: [{ name: securityText(auth.state().locale, 'recoveryFile'), extensions: ["json"] }],
       });
       if (selected.canceled || !selected.filePaths[0])
         throw new SecurityError("AUTH_INVALID");
@@ -199,7 +199,7 @@ export function registerSecurityIpc(
   handle(C.configureBackups, backupConfigSchema, async (d) => {
     auth.reauthenticate(d.currentPassword, "backup.create");
     const choice = await dialog.showOpenDialog(window, {
-      title: "Choose backup folder or external drive",
+      title: securityText(auth.state().locale, 'backupFolderTitle'),
       properties: ["openDirectory", "createDirectory"],
     });
     if (choice.canceled || !choice.filePaths[0]) return false;
@@ -211,10 +211,10 @@ export function registerSecurityIpc(
   handle(C.previewEncryptedBackup, backupPreviewSchema, async (d) => {
     auth.require("backup.restore");
     const choice = await dialog.showOpenDialog(window, {
-      title: "Select encrypted Mosque Suite backup",
+      title: securityText(auth.state().locale, 'backupOpenTitle'),
       properties: ["openFile"],
       filters: [
-        { name: "Encrypted Mosque Suite archive", extensions: ["msbackup"] },
+        { name: securityText(auth.state().locale, 'backupArchive'), extensions: ["msbackup"] },
       ],
     });
     if (choice.canceled || !choice.filePaths[0]) return null;

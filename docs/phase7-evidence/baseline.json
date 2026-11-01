@@ -1,0 +1,419 @@
+{
+  "label": "baseline-v2",
+  "measuredAt": "2026-10-31T15:17:13.480Z",
+  "hardware": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12650HX",
+    "logicalCpus": 20,
+    "memoryGiB": 11.7,
+    "windows": "10.0.26300",
+    "arch": "x64",
+    "node": "24.22.0",
+    "electron": "45.0.0"
+  },
+  "results": [
+    {
+      "families": 500,
+      "fixture": {
+        "families": 500,
+        "members": 2500,
+        "planId": "8aaeb9a6-c14f-4e50-be9b-bc2abdce0c4d",
+        "familyId": "e0219ec8-c302-419e-9f9a-ddbf70efb47f",
+        "seedMs": 32867,
+        "administratorAccounts": 0
+      },
+      "totals": {
+        "families": 500,
+        "members": 2500,
+        "dues": 6000,
+        "payments": 2000,
+        "receipts": 2001,
+        "cashPaise": 15750000,
+        "billedPaise": 90000000,
+        "allocatedPaise": 15000000,
+        "attachments": 1,
+        "events": 23,
+        "notifications": 20,
+        "audit": 508
+      },
+      "metrics": {
+        "databaseOpen": {
+          "samplesMs": [
+            26.53,
+            261.06,
+            13.59,
+            15.27,
+            11.39
+          ],
+          "medianMs": 15.27,
+          "p95Ms": 261.06
+        },
+        "offlineLogin": {
+          "samplesMs": [
+            99.3,
+            84.03,
+            88.18
+          ],
+          "medianMs": 88.18,
+          "p95Ms": 99.3
+        },
+        "dashboardCounts": {
+          "samplesMs": [
+            3.49,
+            1.45,
+            1.23,
+            1.11,
+            1.15
+          ],
+          "medianMs": 1.23,
+          "p95Ms": 3.49
+        },
+        "familySearch": {
+          "samplesMs": [
+            4.89,
+            2.2,
+            2.91,
+            2.18,
+            2.18
+          ],
+          "medianMs": 2.2,
+          "p95Ms": 4.89
+        },
+        "malayalamSearch": {
+          "samplesMs": [
+            3.47,
+            1.82,
+            1.98,
+            1.84,
+            3.29
+          ],
+          "medianMs": 1.98,
+          "p95Ms": 3.47
+        },
+        "memberSearch": {
+          "samplesMs": [
+            3.23,
+            2.5,
+            2.65,
+            2.77,
+            2.33
+          ],
+          "medianMs": 2.65,
+          "p95Ms": 3.23
+        },
+        "familyFinance": {
+          "samplesMs": [
+            54.46,
+            5.9,
+            5.5,
+            5.57,
+            5.37
+          ],
+          "medianMs": 5.57,
+          "p95Ms": 54.46
+        },
+        "monthlyDuesGenerate": {
+          "samplesMs": [
+            603.9
+          ],
+          "medianMs": 603.9,
+          "p95Ms": 603.9
+        },
+        "monthlyDuesDuplicate": {
+          "samplesMs": [
+            264.02
+          ],
+          "medianMs": 264.02,
+          "p95Ms": 264.02
+        },
+        "financeDashboard": {
+          "samplesMs": [
+            57.98,
+            57.85,
+            56.19,
+            50.65,
+            54.05
+          ],
+          "medianMs": 56.19,
+          "p95Ms": 57.98
+        },
+        "monthlyReport": {
+          "samplesMs": [
+            52.66,
+            54.61,
+            48.72,
+            50.96,
+            72.82
+          ],
+          "medianMs": 52.66,
+          "p95Ms": 72.82
+        },
+        "outstandingReport": {
+          "samplesMs": [
+            68.09,
+            69.24,
+            68.84,
+            68.49,
+            75.93
+          ],
+          "medianMs": 68.84,
+          "p95Ms": 75.93
+        },
+        "ledgerReport": {
+          "samplesMs": [
+            46.36,
+            49.58,
+            69.79,
+            69.39,
+            64.21
+          ],
+          "medianMs": 64.21,
+          "p95Ms": 69.79
+        },
+        "auditPage": {
+          "samplesMs": [
+            5.64,
+            2.65,
+            2.97,
+            3.74,
+            2.37
+          ],
+          "medianMs": 2.97,
+          "p95Ms": 5.64
+        },
+        "encryptedBackup": {
+          "samplesMs": [
+            928.17
+          ],
+          "medianMs": 928.17,
+          "p95Ms": 928.17
+        },
+        "restorePreview": {
+          "samplesMs": [
+            393.38
+          ],
+          "medianMs": 393.38,
+          "p95Ms": 393.38
+        },
+        "restoreActivationWithSafety": {
+          "samplesMs": [
+            592.38
+          ],
+          "medianMs": 592.38,
+          "p95Ms": 592.38
+        }
+      },
+      "archiveBytes": 4438183,
+      "memory": {
+        "rss": 308445184,
+        "heapTotal": 123568128,
+        "heapUsed": 44180944,
+        "external": 53955724,
+        "arrayBuffers": 0
+      },
+      "peakRssKiB": 485128,
+      "recovery": "passed"
+    },
+    {
+      "families": 2000,
+      "fixture": {
+        "families": 2000,
+        "members": 10000,
+        "planId": "b560c0bb-f042-4ca1-beab-586e325104f0",
+        "familyId": "06ac1f44-8ceb-47e5-a7b0-229caf164946",
+        "seedMs": 112867,
+        "administratorAccounts": 0
+      },
+      "totals": {
+        "families": 2000,
+        "members": 10000,
+        "dues": 24000,
+        "payments": 8000,
+        "receipts": 8001,
+        "cashPaise": 60750000,
+        "billedPaise": 360000000,
+        "allocatedPaise": 60000000,
+        "attachments": 1,
+        "events": 23,
+        "notifications": 20,
+        "audit": 2008
+      },
+      "metrics": {
+        "databaseOpen": {
+          "samplesMs": [
+            58.5,
+            16.79,
+            19.53,
+            16.94,
+            19.44
+          ],
+          "medianMs": 19.44,
+          "p95Ms": 58.5
+        },
+        "offlineLogin": {
+          "samplesMs": [
+            136.18,
+            132.18,
+            106.28
+          ],
+          "medianMs": 132.18,
+          "p95Ms": 136.18
+        },
+        "dashboardCounts": {
+          "samplesMs": [
+            7.07,
+            3.74,
+            4.55,
+            4.71,
+            5.46
+          ],
+          "medianMs": 4.71,
+          "p95Ms": 7.07
+        },
+        "familySearch": {
+          "samplesMs": [
+            19.1,
+            13.81,
+            13.17,
+            11.52,
+            11.87
+          ],
+          "medianMs": 13.17,
+          "p95Ms": 19.1
+        },
+        "malayalamSearch": {
+          "samplesMs": [
+            7.56,
+            5.54,
+            8.53,
+            7.8,
+            5.96
+          ],
+          "medianMs": 7.56,
+          "p95Ms": 8.53
+        },
+        "memberSearch": {
+          "samplesMs": [
+            13.51,
+            12.15,
+            13.12,
+            12.33,
+            12.24
+          ],
+          "medianMs": 12.33,
+          "p95Ms": 13.51
+        },
+        "familyFinance": {
+          "samplesMs": [
+            46.37,
+            21.89,
+            19.51,
+            18.8,
+            17.95
+          ],
+          "medianMs": 19.51,
+          "p95Ms": 46.37
+        },
+        "monthlyDuesGenerate": {
+          "samplesMs": [
+            7429.94
+          ],
+          "medianMs": 7429.94,
+          "p95Ms": 7429.94
+        },
+        "monthlyDuesDuplicate": {
+          "samplesMs": [
+            1964.62
+          ],
+          "medianMs": 1964.62,
+          "p95Ms": 1964.62
+        },
+        "financeDashboard": {
+          "samplesMs": [
+            403.62,
+            412.6,
+            384.94,
+            436.41,
+            390.91
+          ],
+          "medianMs": 403.62,
+          "p95Ms": 436.41
+        },
+        "monthlyReport": {
+          "samplesMs": [
+            375.6,
+            403.74,
+            407.22,
+            429.54,
+            419.22
+          ],
+          "medianMs": 407.22,
+          "p95Ms": 429.54
+        },
+        "outstandingReport": {
+          "samplesMs": [
+            1026.51,
+            1046.93,
+            1012.34,
+            990.25,
+            964.42
+          ],
+          "medianMs": 1012.34,
+          "p95Ms": 1046.93
+        },
+        "ledgerReport": {
+          "samplesMs": [
+            341.76,
+            367.97,
+            331.08,
+            361.3,
+            351.01
+          ],
+          "medianMs": 351.01,
+          "p95Ms": 367.97
+        },
+        "auditPage": {
+          "samplesMs": [
+            14.04,
+            12.03,
+            5.79,
+            6.44,
+            6.48
+          ],
+          "medianMs": 6.48,
+          "p95Ms": 14.04
+        },
+        "encryptedBackup": {
+          "samplesMs": [
+            2647.91
+          ],
+          "medianMs": 2647.91,
+          "p95Ms": 2647.91
+        },
+        "restorePreview": {
+          "samplesMs": [
+            1377.2
+          ],
+          "medianMs": 1377.2,
+          "p95Ms": 1377.2
+        },
+        "restoreActivationWithSafety": {
+          "samplesMs": [
+            967.67
+          ],
+          "medianMs": 967.67,
+          "p95Ms": 967.67
+        }
+      },
+      "archiveBytes": 17321311,
+      "memory": {
+        "rss": 446701568,
+        "heapTotal": 159404032,
+        "heapUsed": 119005480,
+        "external": 144945222,
+        "arrayBuffers": 0
+      },
+      "peakRssKiB": 1098400,
+      "recovery": "passed"
+    }
+  ]
+}

@@ -18,7 +18,7 @@ export class WorkspaceStore {
   readonly finance: FinanceStore;
   readonly integrations: IntegrationsStore;
 
-  constructor(filename: string, lifeEventsDemo = false, financeDemo = false, integrationsDemo = false) {
+  constructor(filename: string, lifeEventsDemo = false, financeDemo = false, integrationsDemo = false, readonly requireConfiguration = false) {
     this.db = new Database(filename);
     try {
       this.db.pragma('foreign_keys = ON');
@@ -32,10 +32,10 @@ export class WorkspaceStore {
       const events = new LifeEventsStore(domainDb, lifeEventsDemo);
       const finance = new FinanceStore(domainDb, financeDemo);
       const integrations = new IntegrationsStore(domainDb,finance,integrationsDemo);
-      this.registration=authorizedService('registration',registrations,this.security,this.db,finance);
-      this.lifeEvents=authorizedService('lifeEvents',events,this.security,this.db,finance);
-      this.finance=authorizedService('finance',finance,this.security,this.db,finance);
-      this.integrations=authorizedService('integrations',integrations,this.security,this.db,finance);
+      this.registration=authorizedService('registration',registrations,this.security,this.db,finance,requireConfiguration);
+      this.lifeEvents=authorizedService('lifeEvents',events,this.security,this.db,finance,requireConfiguration);
+      this.finance=authorizedService('finance',finance,this.security,this.db,finance,requireConfiguration);
+      this.integrations=authorizedService('integrations',integrations,this.security,this.db,finance,requireConfiguration);
     } catch (error) {
       this.db.close();
       throw error;
@@ -76,6 +76,7 @@ export class WorkspaceStore {
   getSchemaVersion(): number {
     return (this.db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number }).version;
   }
+  setupRequired(): boolean { return this.requireConfiguration && !(this.db.prepare('SELECT setup_complete FROM deployment_settings WHERE id=1').get() as { setup_complete: number }).setup_complete; }
 
   checkStorage(): StorageHealth {
     this.security.require();

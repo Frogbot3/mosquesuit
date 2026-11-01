@@ -12,6 +12,7 @@ import { join, resolve, relative } from "node:path";
 import { tmpdir } from "node:os";
 import { authenticate, password } from "../fixtures/electron-auth";
 import { fictionalFamily } from "../fixtures/registration";
+import { securityText } from '../../shared/security-labels';
 let app: ElectronApplication,
   page: Page,
   profile: string,
@@ -69,6 +70,31 @@ async function go(path: string) {
   await page.goto(`app://mosque/index.html#${path}`);
   await expect(page.locator("h1")).toBeVisible();
 }
+test('preserves unsaved permission edits, shows Malayalam confirmation and removes obsolete role impersonation controls', async () => {
+  await authenticate(app, page);
+  await go('/staff/roles');
+  const permission = page.getByLabel(securityText('en', 'families.edit'), { exact: true });
+  await permission.uncheck();
+  await page.getByLabel(securityText('en', 'role'), { exact: true }).selectOption('accountant');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: securityText('en', 'keep'), exact: true }).click();
+  await expect(permission).not.toBeChecked();
+  await expect(page.getByLabel(securityText('en', 'role'), { exact: true })).toHaveValue('ward_operator');
+  await page.getByLabel(securityText('en', 'role'), { exact: true }).selectOption('accountant');
+  await dialog.getByRole('button', { name: securityText('en', 'discard'), exact: true }).click();
+  await expect(page.getByLabel(securityText('en', 'role'), { exact: true })).toHaveValue('accountant');
+  await page.getByLabel('Language', { exact: true }).selectOption('ml');
+  await page.getByLabel(securityText('ml', 'families.view'), { exact: true }).uncheck();
+  await page.getByLabel(securityText('ml', 'role'), { exact: true }).selectOption('read_only');
+  await expect(dialog).toContainText('സംരക്ഷിക്കാത്ത മാറ്റങ്ങൾ ഉപേക്ഷിക്കണോ?');
+  await dialog.getByRole('button', { name: securityText('ml', 'discard'), exact: true }).click();
+  await go('/notifications');
+  await expect(page.locator('.finance-toolbar select')).toHaveCount(0);
+  await expect(page.locator('.finance-toolbar')).not.toContainText('???');
+  expect(await page.evaluate(() => window.mosque!.setFinanceDemoRole({ role: 'administrator' }))).toMatchObject({ ok: false });
+  expect((await new AxeBuilder({ page }).setLegacyMode().withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
+});
 test("creates an administrator in Malayalam, authenticates offline and clears records on lock", async () => {
   await expect(
     page.getByRole("heading", { name: "Create the first administrator" }),
@@ -286,7 +312,7 @@ test("creates encrypted backups, previews records, saves a safety copy and reope
     .getByRole("button", { name: "Create encrypted backup", exact: true })
     .click();
   await expect(
-    page.getByRole("cell", { name: /manual · verified/ }),
+    page.getByRole("cell", { name: 'Manual backup · Verified' }),
   ).toBeVisible();
   const archive = join(
     files,
@@ -388,7 +414,7 @@ test("creates encrypted backups, previews records, saves a safety copy and reope
     await page.evaluate(() => window.mosque!.checkStorage()),
   ).toMatchObject({
     ok: true,
-    data: { integrity: "ok", foreignKeys: true, schemaVersion: 6 },
+    data: { integrity: "ok", foreignKeys: true, schemaVersion: 7 },
   });
   expect(
     await page.evaluate(() =>

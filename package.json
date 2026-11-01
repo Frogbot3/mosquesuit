@@ -1,8 +1,8 @@
 {
   "name": "mosque-suite",
   "productName": "Mosque Suite",
-  "version": "0.6.0",
-  "description": "Offline-first mosque administration - Phase 6 staff security and recovery",
+  "version": "0.8.0-rc.1",
+  "description": "Offline mosque administration ? unsigned Windows testing candidate",
   "author": "Mosque Suite",
   "private": true,
   "license": "UNLICENSED",
@@ -21,26 +21,38 @@
     "postinstall": "node scripts/verify-native.mjs",
     "test": "node scripts/test.mjs",
     "test:e2e": "npm run build && playwright test",
-    "check": "npm run test && npm run test:e2e",
-    "pack:win": "npm run build && electron-builder --win --x64 --dir",
-    "dist:win": "npm run build && electron-builder --win nsis --x64",
+    "check": "npm run lint && npm run check:localization && npm run test && npm run test:e2e",
+    "pack:win": "npm run build:release && electron-builder --win --x64 --dir",
+    "dist:win": "npm run build:release && electron-builder --win nsis --x64",
     "test:packaged": "node scripts/test-packaged.mjs",
     "demo:finance": "node scripts/start.mjs --finance-demo",
     "demo:integrations": "node scripts/start.mjs --integrations-demo",
     "build:service": "node scripts/build-service.mjs",
     "service:mock": "node scripts/service.mjs",
-    "demo:security": "node scripts/start.mjs --security-demo"
+    "demo:security": "node scripts/start.mjs --security-demo",
+    "lint": "eslint . --max-warnings 0",
+    "check:localization": "node scripts/check-localization.mjs",
+    "qa:benchmark": "node scripts/qa.mjs benchmark",
+    "qa:seed": "node scripts/qa.mjs seed",
+    "qa:pilot-data": "node scripts/qa.mjs pilot-data",
+    "qa:load": "npm run build && playwright test --config playwright.load.config.ts",
+    "demo:pilot": "node scripts/start-pilot.mjs",
+    "qa:package": "node scripts/package-pilot.mjs",
+    "preview:release": "node scripts/start.mjs --release-preview",
+    "build:release": "npm run build && node scripts/release-build.mjs",
+    "dist:signed": "node scripts/release-build.mjs --signed"
   },
   "build": {
     "appId": "org.mosquesuite.desktop",
     "productName": "Mosque Suite",
-    "artifactName": "Mosque-Suite-${version}-${arch}-Setup.${ext}",
+    "artifactName": "MosqueSuite-Unsigned-Testing-Setup-${version}-${arch}.${ext}",
     "directories": {
-      "output": "release/windows-preview"
+      "output": "release/windows-testing"
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*",
+      "dist-electron/main.cjs",
+      "dist-electron/preload.cjs",
       "package.json"
     ],
     "asar": true,
@@ -59,15 +71,24 @@
           ]
         }
       ],
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "icon": "build/icon.ico",
+      "verifyUpdateCodeSignature": true
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": false,
-      "createDesktopShortcut": true
-    }
+      "createDesktopShortcut": "always",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mosque Suite Testing",
+      "allowElevation": false,
+      "packElevateHelper": false
+    },
+    "forceCodeSigning": false
   },
   "dependencies": {
     "@fontsource/noto-sans-malayalam": "5.3.0",
@@ -86,6 +107,9 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
+    "@babel/core": "8.0.10",
+    "@babel/eslint-parser": "8.0.7",
+    "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/jest-dom": "7.0.1",
@@ -100,6 +124,9 @@
     "electron": "45.0.0",
     "electron-builder": "26.18.0",
     "esbuild": "0.28.2",
+    "eslint": "10.14.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
     "jsdom": "30.1.3",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",

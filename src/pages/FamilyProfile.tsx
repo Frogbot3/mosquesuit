@@ -1,5 +1,7 @@
 import { integrationText } from '../../shared/integration-labels';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { useSecurity } from '../components/SecurityProvider';
+import { releaseText } from '../../shared/release-labels';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, Printer, ShieldCheck } from 'lucide-react';
 import { calculateAge, type HistoryAction } from '../../shared/registration';
@@ -17,7 +19,10 @@ const historyLabels: Record<HistoryAction, RegistrationKey> = {
   'member.added': 'memberAdded', 'member.updated': 'memberUpdated', 'member.removed': 'memberRemoved',
 };
 export function FamilyProfilePage() {
-  const { id = '' } = useParams(); const r = useRegistrationText(); const { snapshot } = useWorkspace(); const life=useLifeText();
+  const { id = '' } = useParams(); const r = useRegistrationText(); const { snapshot, notify } = useWorkspace(); const life=useLifeText();
+  const { can } = useSecurity(); const [printing, setPrinting] = useState(false);
+  const rt = (key: string) => releaseText(snapshot.settings.locale, key);
+  async function output(format: 'pdf' | 'print') { setPrinting(true); try { await unwrap(desktop().outputFamily({ id, format })); } catch { notify(rt('error'), true); } finally { setPrinting(false); } }
   const load = useCallback(() => unwrap(desktop().getFamily({ id })), [id]); const result = useRegistrationData(load);
   if (result.loading || !result.data || result.data.id !== id) return <RegistryState error={result.error} loading={result.loading} retry={result.retry} />;
   const family = result.data; const guardian = family.members.find(member => member.id === family.guardianMemberId)!;
@@ -49,6 +54,6 @@ export function FamilyProfilePage() {
     <section className="panel profile-history"><h2>{r('assignmentHistory')}</h2><div className="table-scroll"><table><caption className="sr-only">{r('assignmentHistory')}</caption><thead><tr>{['wardId', 'familyNumber', 'houseNumber', 'from', 'until'].map(key => <th key={key} scope="col">{r(key as RegistrationKey)}</th>)}</tr></thead><tbody>{family.assignments.map(assignment => <tr key={assignment.id}><td>{snapshot.settings.locale === 'ml' ? assignment.wardNameMl || assignment.wardName : assignment.wardName}</td><td>{assignment.familyNumber}</td><td>{assignment.houseNumber || '—'}</td><td>{time(assignment.startedAt)}</td><td>{assignment.endedAt ? time(assignment.endedAt) : r('current')}</td></tr>)}</tbody></table></div></section>
     {snapshot.lifeEventsDemo&&<><p className="life-links"><Link className="text-link" to="/household-transfer">{life('transfer')}</Link></p><TransferHistoryPanel familyId={family.id}/></>}
     {snapshot.financeDemo&&<FamilyFinanceSummary id={family.id}/>}
-    <div className="planned-print"><Printer size={19} /><div><strong>{r('printFamily')} · {r('planned')}</strong><p>{r('printHelp')}</p></div></div>
+    {can('data.export') && <div className="life-actions"><button className="button secondary" disabled={printing} onClick={() => void output('pdf')}><Printer size={19}/>{rt('pdf')}</button><button className="button secondary" disabled={printing} onClick={() => void output('print')}>{rt('print')}</button></div>}
   </>;
 }

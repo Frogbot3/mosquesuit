@@ -1,4 +1,5 @@
 import { securityMigration } from './security-migration';
+import { releaseMigration } from './release-migration';
 import { integrationsMigration } from './integrations-migration';
 import { createHash } from 'node:crypto';
 import type Database from 'better-sqlite3';
@@ -6,7 +7,7 @@ import { registrationMigration } from './registration-migration';
 import { lifeEventsMigration } from './life-events-migration';
 import { financeMigration } from './finance-migration';
 
-export interface Migration { version: number; name: string; sql: string }
+export interface Migration { version: number; name: string; sql: string; requiresOfflineCheckpoint?: boolean }
 
 // Applied SQL is immutable. Add a new migration instead of editing a released one.
 export const migrations: Migration[] = [{
@@ -53,7 +54,7 @@ export const migrations: Migration[] = [{
       ('ward-4','W4','Ward 4','വാർഡ് 4',4);
     INSERT INTO audit_events (kind) VALUES ('workspace.created');
   `,
-}, registrationMigration, lifeEventsMigration, financeMigration, integrationsMigration,securityMigration];
+}, registrationMigration, lifeEventsMigration, financeMigration, integrationsMigration,securityMigration,releaseMigration];
 
 export function checksum(migration: Migration): string {
   return createHash('sha256').update(`${migration.version}:${migration.name}:${migration.sql}`).digest('hex');
@@ -77,6 +78,9 @@ export function migrate(db: Database.Database, definitions = migrations): void {
           throw new Error('Migration history does not match this application.');
         }
       } else {
+        // Risky future changes must be delivered by an offline, separately reviewed
+        // upgrade utility with a verified encrypted checkpoint, never normal startup.
+        if (applied.length && migration.requiresOfflineCheckpoint) throw new Error('An offline verified backup checkpoint and migration procedure are required.');
         db.exec(migration.sql);
         db.prepare('INSERT INTO schema_migrations (version,name,checksum) VALUES (?,?,?)')
           .run(migration.version, migration.name, checksum(migration));

@@ -32,6 +32,7 @@ function Field({
   max,
   required = true,
   options,
+  disabled = false,
 }: {
   label: string;
   value: string | number;
@@ -41,6 +42,7 @@ function Field({
   max?: number;
   required?: boolean;
   options?: { value: string; label: string }[];
+  disabled?: boolean;
 }) {
   const id = useId();
   const t = useText();
@@ -51,6 +53,7 @@ function Field({
         <select
           id={id}
           value={value}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
         >
           {options.map((o) => (
@@ -63,6 +66,7 @@ function Field({
         <input
           id={id}
           type={type}
+          disabled={disabled}
           value={value}
           required={required}
           min={min}
@@ -501,15 +505,21 @@ function RoleForm({
     [confirmed, setConfirmed] = useState(false);
   const readonly =
     role.id === "super_admin" || state.user?.roleId !== "super_admin";
+  const [pendingRole, setPendingRole] = useState<RoleId | null>(null);
   return (
     <div className="panel">
       {form.feedback}
       <Field
         label="role"
         value={role.id}
-        onChange={(v) => onSelect(v as RoleId)}
+        disabled={form.busy}
+        onChange={(v) => form.dirty ? setPendingRole(v as RoleId) : onSelect(v as RoleId)}
         options={roleIds.map((id) => ({ value: id, label: t(id) }))}
       />
+      <ConfirmDialog open={pendingRole !== null} title={t('discardTitle')} confirm={t('discard')} cancel={t('keep')}
+        onCancel={() => setPendingRole(null)} onConfirm={() => { if (pendingRole) { form.setDirty(false); onSelect(pendingRole); } }}>
+        {t('discardHelp')}
+      </ConfirmDialog>
       <form
         className="security-form"
         onChange={() => form.setDirty(true)}
@@ -766,7 +776,7 @@ export function AuditHistory() {
                 {data.data.items.map((r) => (
                   <tr key={r.id}>
                     <td>{new Date(r.at).toLocaleString()}</td>
-                    <td>{r.staffName}</td>
+                    <td>{r.staffId ? r.staffName : t('systemActor')}</td>
                     <td>
                       {r.action}
                       <br />
@@ -847,7 +857,7 @@ export function BackupDashboard() {
                   <td>{new Date(r.at).toLocaleString()}</td>
                   <td>{r.filename}</td>
                   <td>
-                    {r.kind} · {r.status}
+                    {t(`backup.kind.${r.kind}`)} · {t(`backup.status.${r.status}`)}
                   </td>
                   <td>
                     {r.message}

@@ -16,6 +16,7 @@ type CashInput={amountPaise:number;date:string;method:string;reference:string;no
 export class FinanceStore {
   private session:FinanceSession={id:'',role:'administrator',fictional:true};
   constructor(private readonly db:Database.Database,public readonly enabled=false){if(enabled)this.startSession('administrator');}
+  get currentRole():FinanceRole { return this.session.role; }
   require(role:FinanceRole='viewer'):void {
     if(!this.enabled)throw new FinanceError('FINANCE_DEMO_ONLY');
     const rank={viewer:0,accountant:1,administrator:2};if(rank[this.session.role]<rank[role])throw new FinanceError('FINANCE_PERMISSION');
@@ -65,14 +66,17 @@ export class FinanceStore {
   generate(input:unknown){return this.command('administrator','dues.generated',generateSchema,input,d=>{
     const months:string[]=[];for(let month=d.from;month<=d.until;){months.push(month);const date=new Date(`${month}-01T00:00:00Z`);date.setUTCMonth(date.getUTCMonth()+1);month=date.toISOString().slice(0,7);}
     const result={created:0,duplicates:0,skipped:0,amountPaise:0};
+    // Plans cannot change inside this transaction. Read each effective date once.
+    const plansByDate=new Map<string,ReturnType<typeof financePlans>>();
+    const plansAt=(date:string)=>{let plans=plansByDate.get(date);if(!plans){plans=financePlans(this.db,date);plansByDate.set(date,plans);}return plans;};
     const roots=financePlans(this.db).filter(p=>!d.planId||p.id===d.planId);if(d.planId&&!roots.length)throw new FinanceError('FINANCE_NOT_FOUND');
     for(const root of roots){
       const families=this.db.prepare('SELECT DISTINCT family_id AS id FROM family_contribution_assignments WHERE plan_id=?').all(root.id) as {id:string}[];
-      for(const {id} of families){const family=this.household(id);let periods=months.map(m=>`${m}-01`);
+      for(const {id} of families){const family=this.household(id);const assignments=financeAssignments(this.db,id);let periods=months.map(m=>`${m}-01`);
         if(root.frequency==='annual')periods=periods.filter(p=>p.endsWith('-01-01'));
         if(root.frequency==='once'){const firstPlan=(this.db.prepare('SELECT MIN(effective_date) AS date FROM contribution_plan_versions WHERE plan_id=?').get(root.id) as {date:string}).date;const firstAssignment=(this.db.prepare('SELECT MIN(effective_date) AS date FROM family_contribution_assignments WHERE family_id=? AND plan_id=?').get(id,root.id) as {date:string}).date;const start=firstPlan>firstAssignment?firstPlan:firstAssignment;periods=start.slice(0,7)>=d.from&&start.slice(0,7)<=d.until?[start]:[];}
         for(const start of periods){
-          const p=financePlans(this.db,start).find(p=>p.id===root.id);const a=financeAssignments(this.db,id).find(a=>a.planId===root.id&&a.effectiveDate<=start);
+          const p=plansAt(start).find(p=>p.id===root.id);const a=assignments.find(a=>a.planId===root.id&&a.effectiveDate<=start);
           if(!p||!a||!p.active||!family.active||family.exempt||a.mode==='paused'||a.mode==='waived'||p.wardId&&p.wardId!==family.wardId||p.registeredOnly&&family.status!=='registered'||p.requireLiving&&family.living===0){result.skipped++;continue;}
           const amount=a.mode==='override'?a.amountPaise:a.mode==='discount'?Math.max(0,p.amountPaise-a.amountPaise):p.amountPaise;if(!amount){result.skipped++;continue;}
           const period=p.frequency==='monthly'?start.slice(0,7):p.frequency==='annual'?start.slice(0,4):'once';

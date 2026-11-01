@@ -68,16 +68,16 @@ export function SecurityProvider({ children }: { children: ReactNode }) {
   if (error)
     return (
       <main className="startup">
-        <h1>Unable to verify staff access</h1>
+        <h1>{securityText(state?.locale ?? (document.documentElement.lang === 'ml' ? 'ml' : 'en'), 'accessUnavailable')}</h1>
         <button className="button primary" onClick={() => void refresh()}>
-          Retry
+          {securityText(state?.locale ?? (document.documentElement.lang === 'ml' ? 'ml' : 'en'), 'retry')}
         </button>
       </main>
     );
   if (!state)
     return (
       <main className="startup" role="status">
-        Loading staff access…
+        {securityText(document.documentElement.lang === 'ml' ? 'ml' : 'en', 'loading')}
       </main>
     );
   return (

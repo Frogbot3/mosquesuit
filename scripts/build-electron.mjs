@@ -10,4 +10,5 @@ await build({
   outExtension: { '.js': '.cjs' },
   external: ['electron', 'better-sqlite3','exceljs','@node-rs/argon2'],
   sourcemap: false,
+  define: { __RELEASE_BUILD__: process.argv.includes('--release') ? 'true' : 'false' },
 });

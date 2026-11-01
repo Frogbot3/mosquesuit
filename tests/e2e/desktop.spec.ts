@@ -1,3 +1,4 @@
+import { releaseChannels } from '../../shared/release';
 import {securityChannels} from '../../shared/security';
 import {authenticate} from '../fixtures/electron-auth';
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
@@ -50,7 +51,7 @@ test('loads local assets offline and enforces the Electron boundary', async () =
     return { sandbox: preferences.sandbox, isolation: preferences.contextIsolation, node: preferences.nodeIntegration, webSecurity: preferences.webSecurity };
   });
   expect(preferences).toEqual({ sandbox: true, isolation: true, node: false, webSecurity: true });
-  expect(await page.evaluate(() => ({ node: typeof (window as unknown as { require: unknown }).require, bridge: Object.keys(window.mosque!) }))).toEqual({ node: 'undefined', bridge: [...Object.keys(securityChannels),"getIntegrationState","saveMessagingConsent","saveNotificationTemplate","previewNotifications","queueNotifications","decideNotifications","saveReminderSchedule","runReminderSchedules","saveIntegrationConfig","setIntegrationMock","syncIntegrations","createOnlinePaymentLink","cancelOnlinePaymentLink","simulateIntegrationEvent","requestOnlineRefund","resolveOnlineConflict",'getFinanceSetup','setFinanceDemoRole','saveFinancePlan','saveFinanceAssignment','saveFinancePolicy','generateFinanceDues','getFamilyFinance','recordFinancePayment','applyFinanceCredit','adjustFinanceDue','correctFinanceTransaction','saveFinanceFund','saveFinanceCategory','recordFinanceDonation','recordFinanceExpense','decideFinanceExpense','getFinanceDashboard','getFinanceReport','getFinanceTransaction','getFinanceReceipt','getFinanceAudit','saveFinanceConfig','chooseFinanceLogo','outputFinanceDocument','backupFinance','getSnapshot', 'saveSettings', 'checkStorage', 'resetDemo', 'listFamilies', 'getFamily', 'saveFamily', 'listMembers', 'getMember', 'listEvents', 'getEvent', 'saveEvent', 'transitionEvent', 'getEventCategories', 'saveEventCategory', 'transferMember', 'getTransfers', 'attachEventDocument', 'exportEventDocument', 'outputEvent'] });
+  expect(await page.evaluate(() => ({ node: typeof (window as unknown as { require: unknown }).require, bridge: Object.keys(window.mosque!) }))).toEqual({ node: 'undefined', bridge: [...Object.keys(releaseChannels),...Object.keys(securityChannels),"getIntegrationState","saveMessagingConsent","saveNotificationTemplate","previewNotifications","queueNotifications","decideNotifications","saveReminderSchedule","runReminderSchedules","saveIntegrationConfig","setIntegrationMock","syncIntegrations","createOnlinePaymentLink","cancelOnlinePaymentLink","simulateIntegrationEvent","requestOnlineRefund","resolveOnlineConflict",'getFinanceSetup','setFinanceDemoRole','saveFinancePlan','saveFinanceAssignment','saveFinancePolicy','generateFinanceDues','getFamilyFinance','recordFinancePayment','applyFinanceCredit','adjustFinanceDue','correctFinanceTransaction','saveFinanceFund','saveFinanceCategory','recordFinanceDonation','recordFinanceExpense','decideFinanceExpense','getFinanceDashboard','getFinanceReport','getFinanceTransaction','getFinanceReceipt','getFinanceAudit','saveFinanceConfig','chooseFinanceLogo','outputFinanceDocument','backupFinance','getSnapshot', 'saveSettings', 'checkStorage', 'resetDemo', 'listFamilies', 'getFamily', 'saveFamily', 'listMembers', 'getMember', 'listEvents', 'getEvent', 'saveEvent', 'transitionEvent', 'getEventCategories', 'saveEventCategory', 'transferMember', 'getTransfers', 'attachEventDocument', 'exportEventDocument', 'outputEvent'] });
   await page.context().setOffline(true);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'A place for every family.' })).toBeVisible();
@@ -80,7 +81,7 @@ test('saves Malayalam settings and retains them after a real application restart
   await expect(page.getByLabel('Address', { exact: false })).toHaveValue('സാങ്കൽപ്പിക വിലാസം, കേരളം');
   await page.getByRole('link', { name: 'Audit History', exact: true }).click();
   await expect(page.getByText('Mosque settings updated', { exact: true })).toBeVisible();
-  await expect(page.getByText('Local preview · no staff account').first()).toBeVisible();
+  await expect(page.getByText('Local workspace history', { exact: true }).first()).toBeVisible();
 });
 
 test('validates settings, confirms unsaved navigation, and protects reset behind confirmation', async () => {

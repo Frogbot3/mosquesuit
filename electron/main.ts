@@ -1,7 +1,9 @@
 import { BackupService } from './backup-service';
-import { activeWorkspace } from './workspace-path';
+import { registerReleaseIpc } from './release-ipc';
+import { checkedWorkspace, markWorkspaceEstablished } from './workspace-path';
 import { registerSecurityIpc } from './security-ipc';
-import { createMockIntegrationClient,type IntegrationClient } from './integration-client';
+import type { IntegrationClient } from './integration-client';
+declare const __RELEASE_BUILD__: boolean;
 import { registerIntegrationsIpc } from './integrations-ipc';
 import { app, BrowserWindow, dialog, protocol, session, safeStorage, powerMonitor } from 'electron';
 import { mkdirSync } from 'node:fs';
@@ -16,14 +18,21 @@ import { APP_ORIGIN, CSP, DEV_ORIGIN, isTrustedDocument, resolveAsset } from './
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('Mosque Suite');
+if (app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'Mosque Suite Testing'));
 // Keep development/test fixtures separate from the packaged preview's userData.
 const testProfile = !app.isPackaged && process.env.MOSQUE_TEST_PROFILE;
 if (testProfile && !/^test-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(testProfile)) throw new Error('Invalid test profile.');
-const securityDemo = !app.isPackaged && process.env.MOSQUE_SECURITY_DEMO === '1';
-const integrationsDemo = !app.isPackaged && Boolean(testProfile || securityDemo || process.env.MOSQUE_INTEGRATIONS_DEMO === '1');
-const financeDemo = !app.isPackaged && Boolean(testProfile || integrationsDemo || process.env.MOSQUE_FINANCE_DEMO === '1');
-const lifeEventsDemo = !app.isPackaged && Boolean(testProfile || financeDemo || process.env.MOSQUE_LIFE_EVENTS_DEMO === '1');
-if (!app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'Mosque Suite Development', testProfile || (securityDemo ? 'security-demo' : integrationsDemo ? 'integrations-demo' : financeDemo ? 'finance-demo' : lifeEventsDemo ? 'life-events-demo' : 'workspace')));
+const packagedQaProfile = app.isPackaged && app.commandLine.getSwitchValue('qa-profile');
+if (packagedQaProfile && !/^test-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(packagedQaProfile)) throw new Error('Invalid QA profile.');
+// Only the storage location changes; authentication and production gates stay on.
+if (packagedQaProfile) app.setPath('userData', join(app.getPath('appData'), 'Mosque Suite Package QA', packagedQaProfile));
+const pilotDemo = !app.isPackaged && process.env.MOSQUE_PILOT_DEMO === '1';
+const releasePreview = !app.isPackaged && process.env.MOSQUE_RELEASE_PREVIEW === '1';
+const securityDemo = !app.isPackaged && (pilotDemo || process.env.MOSQUE_SECURITY_DEMO === '1');
+const integrationsDemo = !__RELEASE_BUILD__ && !app.isPackaged && !releasePreview && Boolean(testProfile || securityDemo || process.env.MOSQUE_INTEGRATIONS_DEMO === '1');
+const financeDemo = Boolean(app.isPackaged || releasePreview || testProfile || integrationsDemo || process.env.MOSQUE_FINANCE_DEMO === '1');
+const lifeEventsDemo = Boolean(app.isPackaged || financeDemo || process.env.MOSQUE_LIFE_EVENTS_DEMO === '1');
+if (!app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'Mosque Suite Development', testProfile || (releasePreview ? 'release-preview' : pilotDemo ? 'pilot-demo' : securityDemo ? 'security-demo' : integrationsDemo ? 'integrations-demo' : financeDemo ? 'finance-demo' : lifeEventsDemo ? 'life-events-demo' : 'workspace')));
 const development = !app.isPackaged && process.env.MOSQUE_DEV_URL === DEV_ORIGIN;
 let restoreRequested=false;
 let backups:BackupService|undefined;
@@ -42,9 +51,10 @@ else {
   void app.whenReady().then(async () => {
     try {
       mkdirSync(app.getPath('userData'), { recursive: true });
-      const dataDir=activeWorkspace(app.getPath('userData'));
-      store = new WorkspaceStore(join(dataDir, 'mosque-suite.sqlite3'), lifeEventsDemo,financeDemo,integrationsDemo);
-      if(integrationsDemo){integrationClient=await createMockIntegrationClient(join(dataDir,'integration-service.sqlite3'),store.integrations.workspaceId);store.integrations.attach(integrationClient);}
+      const dataDir=checkedWorkspace(app.getPath('userData'));
+      store = new WorkspaceStore(join(dataDir, 'mosque-suite.sqlite3'), lifeEventsDemo,financeDemo,integrationsDemo,app.isPackaged || releasePreview);
+      markWorkspaceEstablished(app.getPath('userData'));
+      if(!__RELEASE_BUILD__ && integrationsDemo){const {createMockIntegrationClient}=await import('./integration-client');integrationClient=await createMockIntegrationClient(join(dataDir,'integration-service.sqlite3'),store.integrations.workspaceId);store.integrations.attach(integrationClient);}
       backups=new BackupService(store,app.getPath('userData'),dataDir,{available:()=>safeStorage.isEncryptionAvailable(),seal:value=>safeStorage.encryptString(value),open:value=>safeStorage.decryptString(value)},integrationClient?.snapshot,()=>{restoreRequested=true;app.relaunch();app.quit();});
       backupTimer=setInterval(()=>void backups?.scheduled(),60000);
       powerMonitor.on('lock-screen',()=>{store?.security.lock();printDocuments.clear();void backups?.clearPreview();});
@@ -107,6 +117,7 @@ else {
         if (choice === 1) event.preventDefault();
       });
       registerSecurityIpc(mainWindow,store,backups,development);
+      registerReleaseIpc(mainWindow,store,backups,development,rendererRoot);
       registerIpc(mainWindow, store, {
         environment: app.isPackaged ? 'preview' : testProfile ? 'test' : 'development',
         version: app.getVersion(), canResetDemo: !app.isPackaged,

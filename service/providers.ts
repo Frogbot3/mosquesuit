@@ -32,7 +32,7 @@ export class MetaCloudAdapter implements MessageProvider {
   // The server-owned manifest binds a local template to the provider-approved
   // name, language and exact static text. Only approved text slots may vary.
   const slots=[...approved.body.matchAll(/\{\{(.*?)\}\}/g)];if(slots.some(m=>!['mosque','amount','period','payment_link','receipt_number','receipt_link'].includes(m[1])))throw new DispatchError('rejected');
-  const escape=(s:string)=>s.replace(/[.*+?^$\{\}()|[\]\\]/g,'\\$&');let expression='^',offset=0;
+  const escape=(s:string)=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');let expression='^',offset=0;
   for(const slot of slots){expression+=escape(approved.body.slice(offset,slot.index))+'([\\s\\S]{0,500}?)';offset=slot.index!+slot[0].length;}
   expression+=escape(approved.body.slice(offset))+'$';const match=new RegExp(expression,'u').exec(d.body);if(!match)throw new DispatchError('rejected');
   const parameters=match.slice(1);let response:Response;

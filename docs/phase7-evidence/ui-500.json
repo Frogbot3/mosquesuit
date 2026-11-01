@@ -1,0 +1,106 @@
+{
+  "families": 500,
+  "members": 2500,
+  "coldProcessLaunchMs": 36712,
+  "dashboardAfterLoginMs": 168,
+  "familyDirectoryMs": 938,
+  "memberDirectoryMs": 12,
+  "ledgerRenderMs": 1480,
+  "duesIpcMs": 3047,
+  "rendererFramesDuringDues": 180,
+  "monthlyPdfMs": 506,
+  "processMemory": [
+    {
+      "type": "Browser",
+      "memory": {
+        "workingSetSize": 270408,
+        "peakWorkingSetSize": 342748,
+        "privateBytes": 294020
+      }
+    },
+    {
+      "type": "GPU",
+      "memory": {
+        "workingSetSize": 150660,
+        "peakWorkingSetSize": 152612,
+        "privateBytes": 218672
+      }
+    },
+    {
+      "type": "Utility",
+      "memory": {
+        "workingSetSize": 54028,
+        "peakWorkingSetSize": 54028,
+        "privateBytes": 11916
+      }
+    },
+    {
+      "type": "Tab",
+      "memory": {
+        "workingSetSize": 155528,
+        "peakWorkingSetSize": 155528,
+        "privateBytes": 89320
+      }
+    }
+  ],
+  "viewports": [
+    {
+      "requested": {
+        "width": 1366,
+        "height": 768,
+        "zoom": 1
+      },
+      "actual": {
+        "x": 55,
+        "y": 30,
+        "width": 1368,
+        "height": 768
+      },
+      "zoom": 1,
+      "renderer": {
+        "width": 1368,
+        "height": 768,
+        "devicePixelRatio": 1.25
+      }
+    },
+    {
+      "requested": {
+        "width": 1536,
+        "height": 864,
+        "zoom": 1.25
+      },
+      "actual": {
+        "x": 55,
+        "y": 30,
+        "width": 1536,
+        "height": 864
+      },
+      "zoom": 1.25,
+      "renderer": {
+        "width": 1229,
+        "height": 691,
+        "devicePixelRatio": 1.5625
+      }
+    },
+    {
+      "requested": {
+        "width": 1920,
+        "height": 1080,
+        "zoom": 1.5
+      },
+      "actual": {
+        "x": 55,
+        "y": 30,
+        "width": 1920,
+        "height": 1080
+      },
+      "zoom": 1.5,
+      "renderer": {
+        "width": 1280,
+        "height": 720,
+        "devicePixelRatio": 1.875
+      }
+    }
+  ],
+  "errors": []
+}

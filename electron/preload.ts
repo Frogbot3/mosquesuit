@@ -1,4 +1,5 @@
 import { securityChannels } from '../shared/security';
+import { releaseChannels } from '../shared/release';
 import { integrationChannels } from '../shared/integrations';
 import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopApi } from '../shared/contracts';
@@ -6,6 +7,19 @@ import { CHANNELS } from '../shared/channels';
 import { FINANCE_CHANNELS } from '../shared/finance-channels';
 
 const api: DesktopApi = {
+  getDeploymentSettings: () => ipcRenderer.invoke(releaseChannels.getDeploymentSettings, {}),
+  saveDeploymentSettings: input => ipcRenderer.invoke(releaseChannels.saveDeploymentSettings, input),
+  chooseDeploymentLogo: input => ipcRenderer.invoke(releaseChannels.chooseDeploymentLogo, input),
+  selectImportFile: () => ipcRenderer.invoke(releaseChannels.selectImportFile, {}),
+  previewImport: input => ipcRenderer.invoke(releaseChannels.previewImport, input),
+  commitImport: input => ipcRenderer.invoke(releaseChannels.commitImport, input),
+  cancelImport: () => ipcRenderer.invoke(releaseChannels.cancelImport, {}),
+  exportImportReport: input => ipcRenderer.invoke(releaseChannels.exportImportReport, input),
+  getReleaseState: () => ipcRenderer.invoke(releaseChannels.getReleaseState, {}),
+  checkForUpdates: () => ipcRenderer.invoke(releaseChannels.checkForUpdates, {}),
+  activateOfflineLicense: () => ipcRenderer.invoke(releaseChannels.activateOfflineLicense, {}),
+  exportDiagnostics: () => ipcRenderer.invoke(releaseChannels.exportDiagnostics, {}),
+  outputFamily: input => ipcRenderer.invoke(releaseChannels.outputFamily, input),
   getSecurityState: () => ipcRenderer.invoke(securityChannels.getSecurityState,{}),
   bootstrapAdministrator: input => ipcRenderer.invoke(securityChannels.bootstrapAdministrator,input),
   loginStaff: input => ipcRenderer.invoke(securityChannels.loginStaff,input),

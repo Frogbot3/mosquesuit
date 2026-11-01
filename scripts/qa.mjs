@@ -1,0 +1,13 @@
+import { build } from 'esbuild';
+import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import electron from 'electron';
+await mkdir('tmp/qa-tools', { recursive: true });
+const entry = process.argv[2];
+if (!['benchmark', 'seed', 'pilot-data'].includes(entry)) throw new Error('Usage: node scripts/qa.mjs benchmark|seed|pilot-data [label or size]');
+const outfile = resolve(`tmp/qa-tools/${entry}.cjs`);
+await build({ entryPoints: [`scripts/qa/${entry}.ts`], outfile, platform: 'node', format: 'cjs', bundle: true, packages: 'external', target: 'node24' });
+const child = spawn(electron, [outfile, ...process.argv.slice(3)], { stdio: 'inherit', windowsHide: true, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } });
+child.on('exit', code => process.exit(code ?? 1));
+child.on('error', error => { console.error(error.message); process.exit(1); });

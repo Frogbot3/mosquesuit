@@ -20,7 +20,7 @@ export function financialReport(db:Database.Database,request:FinanceReportReques
   // slicing payment and charge text independently can invent credit balances.
   const f=request.kind==='statement'?{...request.filters,wardId:'',categoryId:'',search:''}:request.filters;const all=financeTransactions(db,f.until,request.familyId).filter(t=>matchesFinance(t,f));const transactions=all.filter(t=>t.date>=f.from);
   const dues=financeDues(db,f.until,request.familyId).filter(d=>(request.kind==='statement'||d.dueDate<=f.until)&&matchesFinance(d,f));
-  let columns:FinanceReport['columns']=[];let rows:FinanceReport['rows']=[];let basis='cashBasis';
+  let columns:FinanceReport['columns'];let rows:FinanceReport['rows']=[];let basis='cashBasis';
   const col=(key:string,money=false)=>({key,label:key,money});
   if(request.kind==='daily'||request.kind==='methods'){
     const field=request.kind==='daily'?'date':'method';columns=[col(field),...['collectedPaise','donationPaise','expensePaise','refundPaise','reversalPaise','netCashPaise'].map(k=>col(k,true))];
@@ -33,7 +33,8 @@ export function financialReport(db:Database.Database,request:FinanceReportReques
     rows=[...new Set([...dues.map(d=>d.ward),...transactions.map(t=>t.ward||'unassigned')])].sort().map(ward=>{const ds=dues.filter(d=>d.ward===ward);const ts=transactions.filter(t=>(t.ward||'unassigned')===ward);return {ward,billedPaise:sum(ds.filter(d=>d.dueDate>=f.from),d=>d.adjustedPaise),...flows(ts),outstandingPaise:sum(ds,d=>d.balancePaise)};});
   }else if(request.kind==='outstanding'||request.kind==='overdue'){
     basis='balanceBasis';columns=[col('familyCode'),col('guardian'),col('ward'),col('outstandingPaise',true),col('overduePaise',true)];
-    const outstanding=dues.filter(d=>d.balancePaise>0&&(request.kind!=='overdue'||d.overdue));rows=[...new Set(outstanding.map(d=>d.familyId))].map(id=>{const ds=outstanding.filter(d=>d.familyId===id);return {familyCode:ds[0].familyCode,guardian:ds[0].guardian,ward:ds[0].ward,outstandingPaise:sum(ds,d=>d.balancePaise),overduePaise:sum(ds.filter(d=>d.overdue),d=>d.balancePaise)};});
+    const groups=new Map<string,{familyCode:string;guardian:string;ward:string;outstandingPaise:number;overduePaise:number}>();
+    for(const due of dues){if(due.balancePaise<=0||request.kind==='overdue'&&!due.overdue)continue;let group=groups.get(due.familyId);if(!group){group={familyCode:due.familyCode,guardian:due.guardian,ward:due.ward,outstandingPaise:0,overduePaise:0};groups.set(due.familyId,group);}group.outstandingPaise+=due.balancePaise;if(due.overdue)group.overduePaise+=due.balancePaise;}rows=[...groups.values()];
   }else if(request.kind==='funds'){
     basis='fundBasis';columns=[col('fund'),col('restriction'),col('openingPaise',true),col('inflowPaise',true),col('outflowPaise',true),col('closingPaise',true)];
     rows=financeFunds(db,f.until).map(fund=>{const ts=all.filter(t=>t.fundId===fund.id);const period=ts.filter(t=>t.date>=f.from);return {fund:`${fund.name} ${fund.nameMl}`,restriction:fund.restricted?'restricted':'unrestricted',openingPaise:sum(ts.filter(t=>t.date<f.from),t=>t.cashPaise),inflowPaise:sum(period.filter(t=>t.cashPaise>0),t=>t.cashPaise),outflowPaise:sum(period.filter(t=>t.cashPaise<0),t=>-t.cashPaise),closingPaise:sum(ts,t=>t.cashPaise)};});

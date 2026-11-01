@@ -109,7 +109,7 @@ describe("security release controls", () => {
         )
         .all(),
     ).toEqual(before);
-    expect(s.getSchemaVersion()).toBe(6);
+    expect(s.getSchemaVersion()).toBe(7);
     expect(s.checkStorage().integrity).toBe("ok");
   });
   it("retains audit attribution across restarts and detects tampering by a local administrator", () => {

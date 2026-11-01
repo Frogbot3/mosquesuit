@@ -727,6 +727,12 @@ export class SecurityStore {
       valid: this.integrity(),
     };
   }
+  // Backup orchestration binds the initiating session without registering a domain
+  // operation: BackupService must acquire its exclusive maintenance freeze itself.
+  backupOperation<T>(run: () => T): T {
+    this.require();
+    return this.context.run(this.session!.id, run);
+  }
   operation<T>(run: () => T): T {
     if (this.maintenance) throw new SecurityError("AUTH_BUSY");
     this.operating++;

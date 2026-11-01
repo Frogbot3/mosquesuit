@@ -21,7 +21,7 @@ function payment(familyId:string,amountPaise:number,date='2026-02-15'):PaymentDr
 const filters={...financeFilters(),from:'2026-01-01',until:'2026-12-31'};
 describe('financial accounting',()=>{
   it('upgrades populated Phase 3 records without rewriting the registry or event history',()=>{
-    const dir=mkdtempSync(join(tmpdir(),'mosque-finance-upgrade-'));dirs.push(dir);const path=join(dir,'phase3.sqlite3');const db=new Database(path);let familyId='';let eventId='';
+    const dir=mkdtempSync(join(tmpdir(),'mosque-finance-upgrade-'));dirs.push(dir);const path=join(dir,'phase3.sqlite3');const db=new Database(path);let familyId:string;let eventId:string;
     try{db.pragma('foreign_keys=ON');migrate(db,migrations.slice(0,3));const registrations=new RegistrationStore(db);const family=registrations.save(fictionalFamily());familyId=family.id;const event=new LifeEventsStore(db,true).save({...blankEvent('death'),number:'DE-PRESERVE',memberId:family.guardianMemberId,remarks:'സാങ്കൽപ്പിക ചരിത്രം'});eventId=event.id;db.prepare('UPDATE mosque_settings SET name=?').run('Fictional preserved mosque');}finally{db.close();}
     const upgraded=open(path);expect(upgraded.getSettings().name).toBe('Fictional preserved mosque');expect(upgraded.registration.get({id:familyId}).members).toHaveLength(4);expect(upgraded.lifeEvents.get({id:eventId})).toMatchObject({number:'DE-PRESERVE',remarks:'സാങ്കൽപ്പിക ചരിത്രം',status:'reported'});expect(upgraded.finance.family({id:familyId})).toMatchObject({outstandingPaise:0,transactions:[]});
   });

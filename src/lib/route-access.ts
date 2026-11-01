@@ -2,7 +2,9 @@ import type { Permission, SecurityState } from "../../shared/security";
 export function canOpenRoute(state: SecurityState, path: string) {
   let permission: Permission | undefined,
     global = false;
-  if (path.startsWith("/staff")) {
+  if (path === '/setup' || path === '/imports') {
+    return Boolean(state.user?.allWards) && state.permissions.includes('settings.change') && (path === '/setup' ? state.permissions.includes('finance.configure') : state.permissions.includes('families.create') && state.permissions.includes('backup.create'));
+  } else if (path.startsWith("/staff")) {
     permission = "staff.manage";
     global = true;
   } else if (path.startsWith("/audit")) {

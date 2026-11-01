@@ -1,0 +1,37 @@
+{
+  "version": "0.7.0",
+  "reportDate": "2026-11-01",
+  "check": {
+    "command": "npm.cmd run check",
+    "exitCode": 0,
+    "unitFiles": 19,
+    "unitTestsPassed": 115,
+    "electronTestsPassed": 30,
+    "packagedTestsSkipped": 1,
+    "lint": "passed",
+    "localizationPairs": 674,
+    "typecheck": "passed",
+    "productionBuilds": [
+      "renderer",
+      "electron",
+      "service"
+    ]
+  },
+  "load": {
+    "command": "npm.cmd run qa:load",
+    "exitCode": 0,
+    "passed": 2,
+    "families": [
+      500,
+      2000
+    ]
+  },
+  "native": {
+    "sqlite": "3.53.4",
+    "argon2id": "passed"
+  },
+  "logSha256": {
+    "check": "3aed34aa507352d93cd6e903bf47ff1f2c134e53d77a0db25f7036f311067198",
+    "load": "ef69a42b0e7e132d4fd535da7eed5cc6beef570e31f0162555e05e9282ec1919"
+  }
+}

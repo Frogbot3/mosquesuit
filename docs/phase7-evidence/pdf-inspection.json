@@ -1,0 +1,92 @@
+[
+  {
+    "families": 500,
+    "pages": 1,
+    "fonts": {
+      "AAAAAA+SegoeUI": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 14780
+      },
+      "BAAAAA+NotoSansMalayalam-SemiBold": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 6156
+      },
+      "CAAAAA+NotoSansMalayalam-SemiBold": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 13608
+      },
+      "DAAAAA+NotoSansMalayalam-Regular": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 6336
+      },
+      "EAAAAA+NotoSansMalayalam-Regular": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 12576
+      },
+      "FAAAAA+NotoSansMalayalam-Regular": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 1376
+      },
+      "GAAAAA+NotoSansMalayalam-SemiBold": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 1364
+      }
+    },
+    "malayalamTextExtracted": true,
+    "images": [
+      "monthly-500-page-1.png"
+    ]
+  },
+  {
+    "families": 2000,
+    "pages": 1,
+    "fonts": {
+      "AAAAAA+SegoeUI": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 14780
+      },
+      "BAAAAA+NotoSansMalayalam-SemiBold": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 6088
+      },
+      "CAAAAA+NotoSansMalayalam-SemiBold": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 13608
+      },
+      "DAAAAA+NotoSansMalayalam-Regular": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 6336
+      },
+      "EAAAAA+NotoSansMalayalam-Regular": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 12576
+      },
+      "FAAAAA+NotoSansMalayalam-Regular": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 1376
+      },
+      "GAAAAA+NotoSansMalayalam-SemiBold": {
+        "format": "ttf",
+        "type": "Type0",
+        "embeddedBytes": 1364
+      }
+    },
+    "malayalamTextExtracted": true,
+    "images": [
+      "monthly-2000-page-1.png"
+    ]
+  }
+]

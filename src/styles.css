@@ -337,3 +337,17 @@ html[lang="ml"] .button { font-size: 12px; }
   .history-list li { flex-direction: column; gap: 8px; }
   .history-list time { text-align: left; }
 }
+/* Configuration and import keep existing application controls and readable tables. */
+.release-panel { padding: 24px; }
+.release-panel fieldset { border: 0; padding: 0; margin: 16px 0; min-width: 0; }
+.release-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.release-panel .field { display: flex; flex-direction: column; gap: 7px; margin: 12px 0; }
+.release-panel input:not([type=checkbox]), .release-panel select { width: 100%; min-height: 42px; }
+.release-panel .checkbox-label { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+.release-panel .table-scroll { margin: 20px 0; max-height: 420px; overflow: auto; }
+.ward-config { border-top: 1px solid var(--border); padding-top: 12px; }
+.setup-logo, .paper-logo { width: 80px; max-height: 100px; object-fit: contain; }
+.event-paper table { border-collapse: collapse; width: 100%; font-size: 11px; }
+.event-paper th, .event-paper td { padding: 8px; border: 1px solid #bcc7c5; text-align: left; overflow-wrap: anywhere; }
+.event-paper tr { break-inside: avoid; }
+.event-paper thead { display: table-header-group; }

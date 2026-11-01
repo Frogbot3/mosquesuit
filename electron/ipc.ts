@@ -29,6 +29,8 @@ export function registerIpc(window: BrowserWindow, store: WorkspaceStore, info: 
     });
   }
   handle(CHANNELS.snapshot, emptyRequest, (): Snapshot => ({
+    setupRequired: store.setupRequired(),
+    financialYearStart: (store.security.db.prepare('SELECT financial_year_start FROM deployment_settings WHERE id=1').get() as { financial_year_start: number }).financial_year_start,
     ...info, settings: store.getSettings(), wards: store.getWards(), activity: store.getActivity(), schemaVersion: store.getSchemaVersion(), registryCounts: store.security.state().permissions.includes('families.view')?store.registration.counts():{families:0,livingMembers:0}, lifeEventsDemo: store.lifeEvents.enabled,financeDemo:store.finance.enabled,integrationsDemo:store.integrations.enabled,
   }));
   handle(CHANNELS.settings, settingsSchema, input => store.saveSettings(input));

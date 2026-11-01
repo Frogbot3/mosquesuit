@@ -1,3 +1,4 @@
+import { releaseApiMocks } from '../fixtures/release-api';
 import { securityApiMocks } from '../fixtures/security-api';
 import { integrationMocks } from '../fixtures/integrations-api';
 // @vitest-environment jsdom
@@ -18,7 +19,7 @@ function setup() {
     activity: [], environment: 'test', version: '0.5.0', canResetDemo: true, schemaVersion: 5, registryCounts: { families: 0, livingMembers: 0 }, lifeEventsDemo: false,financeDemo:false,integrationsDemo:false,
   };
   window.mosque = {
-    ...lifeApiMocks(),...financeApiMocks(),...integrationMocks(),...securityApiMocks(),
+    ...lifeApiMocks(),...financeApiMocks(),...integrationMocks(),...securityApiMocks(),...releaseApiMocks(),
     getSnapshot: vi.fn().mockResolvedValue({ ok: true, data: snapshot }), saveSettings: vi.fn(), checkStorage: vi.fn(), resetDemo: vi.fn(),
     listFamilies: vi.fn(), getFamily: vi.fn(), listMembers: vi.fn(), getMember: vi.fn(),
     saveFamily: vi.fn().mockResolvedValue({ ok: false, error: { code: 'DUPLICATE_FAMILY', message: 'Duplicate' } }),

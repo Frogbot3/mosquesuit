@@ -1,3 +1,4 @@
+import { releaseApiMocks } from '../fixtures/release-api';
 import { securityApiMocks } from '../fixtures/security-api';
 import { integrationMocks } from '../fixtures/integrations-api';
 // @vitest-environment jsdom
@@ -19,7 +20,7 @@ const fixture: Snapshot = {
 };
 function setup(page: 'wards' | 'settings') {
   window.mosque = {
-    ...lifeApiMocks(),...financeApiMocks(),...integrationMocks(),...securityApiMocks(),
+    ...lifeApiMocks(),...financeApiMocks(),...integrationMocks(),...securityApiMocks(),...releaseApiMocks(),
     getSnapshot: vi.fn().mockResolvedValue({ ok: true, data: structuredClone(fixture) }),
     saveSettings: vi.fn(async (settings: Settings) => ({ ok: true as const, data: { ...settings, revision: settings.revision + 1 } })),
     checkStorage: vi.fn().mockResolvedValue({ ok: true, data: { integrity: 'ok', schemaVersion: 2, foreignKeys: true, journalMode: 'wal' } }),

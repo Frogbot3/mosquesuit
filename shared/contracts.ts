@@ -1,4 +1,5 @@
 import type { SecurityApi,SecurityErrorCode } from './security';
+import type { ReleaseApi } from './release';
 import { z } from 'zod';
 import type { FamilyDraft, FamilyProfile, FamilyQuery, FamilySummary, MemberSummary, PageResult, RegistryErrorCode } from './registration';
 import type { LifeEventsApi, LifeEventErrorCode } from './life-events';
@@ -39,13 +40,15 @@ export interface Snapshot {
   lifeEventsDemo: boolean;
   financeDemo: boolean;
   integrationsDemo: boolean;
+  setupRequired?: boolean;
+  financialYearStart?: number;
 }
 
 export type ErrorCode = 'VALIDATION' | 'FORBIDDEN' | 'CONFLICT' | 'STORAGE' | 'INTERNAL' | RegistryErrorCode | LifeEventErrorCode | FinanceErrorCode | IntegrationErrorCode | SecurityErrorCode;
 export type Result<T> = { ok: true; data: T } | { ok: false; error: { code: ErrorCode; message: string } };
 
 // Deliberately no generic invoke, filesystem path, SQL, credentials, or event object.
-export interface DesktopApi extends LifeEventsApi, FinanceApi,IntegrationApi,SecurityApi {
+export interface DesktopApi extends LifeEventsApi, FinanceApi,IntegrationApi,SecurityApi,ReleaseApi {
   getSnapshot: () => Promise<Result<Snapshot>>;
   saveSettings: (settings: Settings) => Promise<Result<Settings>>;
   checkStorage: () => Promise<Result<StorageHealth>>;

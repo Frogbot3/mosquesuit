@@ -1,5 +1,6 @@
 import { useState, type ComponentProps } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
+import { releaseText } from '../../shared/release-labels';
 import { Building2, House, MapPin, Users, UserRound, HeartHandshake, FileText, CalendarDays, WalletCards, Coins, ChartNoAxesCombined, Bell, Files, ArrowDownUp, Database, UserRoundCog, Settings, History, AlertCircle, Globe2, Sun, Moon } from 'lucide-react';
 import { useWorkspace } from './WorkspaceProvider';
 import type { TranslationKey } from '../lib/i18n';
@@ -11,7 +12,7 @@ import { canOpenRoute } from '../lib/route-access';
 function AllowedLink(props:ComponentProps<typeof NavLink>){const {state}=useSecurity();return canOpenRoute(state,String(props.to))?<NavLink {...props}/>:null;}
 
 const planned = [
-  ['documents', Files, 5], ['imports', ArrowDownUp, 3],
+  ['documents', Files, 5],
 ] as const;
 const labels: Record<string, TranslationKey> = { '/notifications': 'notifications', '/integrations': 'notifications', '/': 'dashboard', '/wards': 'wards', '/families': 'families', '/members': 'members', '/settings': 'settings', '/activity': 'activity', '/payments':'payments', '/finance':'payments', '/donations':'donations', '/reports':'reports' };
 
@@ -50,6 +51,9 @@ export function Layout() {
         {can('backup.create')&&state.user?.allWards&&<AllowedLink to="/backup" className="nav-link"><Database/><span>{s('backup')}</span></AllowedLink>}
         {can('audit.view')&&state.user?.allWards&&<AllowedLink to="/audit" className="nav-link"><History/><span>{s('audit')}</span></AllowedLink>}
         <AllowedLink to="/security" className="nav-link"><UserRoundCog/><span>{s('security')}</span></AllowedLink>
+        <AllowedLink to="/imports" className="nav-link"><ArrowDownUp/><span>{releaseText(snapshot.settings.locale,'imports')}</span></AllowedLink>
+        <AllowedLink to="/setup" className="nav-link"><Settings/><span>{releaseText(snapshot.settings.locale,'setup')}</span></AllowedLink>
+        <AllowedLink to="/about" className="nav-link"><AlertCircle/><span>{releaseText(snapshot.settings.locale,'about')}</span></AllowedLink>
         <div className="nav-section-label">{t('workspace')} <span>{t('later')}</span></div>
         {planned.map(([key, Icon, phase]) => <div key={key} className="nav-link planned" aria-disabled="true" title={`${t('later')} · Phase ${phase}`}><Icon /><span>{t(key)}</span></div>)}
         <div className="nav-divider" />
@@ -66,7 +70,7 @@ export function Layout() {
       </div>
       <main id="main-content" tabIndex={-1} className="main-content">
         <div className="preview-notice"><AlertCircle size={21} /><p><strong>{snapshot.lifeEventsDemo?lifeText(snapshot.settings.locale,'demoTitle'):t('preview')}</strong><span aria-hidden="true"> · </span>{snapshot.lifeEventsDemo?lifeText(snapshot.settings.locale,'demoNotice'):t('warning')}</p></div>
-        {canOpenRoute(state,location.pathname)?<Outlet />:<section className="panel"><h1>{s('AUTH_PERMISSION')}</h1></section>}
+        {snapshot.setupRequired && !['/setup','/backup','/backup/restore','/security','/about'].includes(location.pathname) ? <Navigate to="/setup" replace /> : canOpenRoute(state,location.pathname)?<Outlet />:<section className="panel"><h1>{s('AUTH_PERMISSION')}</h1></section>}
       </main>
       <footer className="workspace-footer">MOSQUE SUITE {snapshot.version} · {t('preview')}</footer>
     </div>

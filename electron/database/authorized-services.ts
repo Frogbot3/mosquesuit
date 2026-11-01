@@ -77,6 +77,7 @@ export function authorizedService<T extends object>(
   auth: SecurityStore,
   db: Database.Database,
   finance: FinanceStore,
+  requireConfiguration = false,
 ): T {
   const family = (id: unknown) => {
     if (typeof id === "string" && id) auth.family(id);
@@ -117,7 +118,7 @@ export function authorizedService<T extends object>(
           )
         ? "accountant"
         : "viewer";
-    if (finance.setup().session.role !== role) finance.setRole({ role });
+    if (finance.currentRole !== role) finance.setRole({ role });
   };
   function authorize(method: string, args: unknown[]) {
     const d = (args[0] && typeof args[0] === "object" ? args[0] : {}) as Input;
@@ -248,6 +249,7 @@ export function authorizedService<T extends object>(
       const method = String(key);
       return (...args: unknown[]) => {
         authorize(method, args);
+        if (requireConfiguration && !readOnly.has(method) && !['require','requireDemo'].includes(method) && !(db.prepare('SELECT setup_complete FROM deployment_settings WHERE id=1').get() as { setup_complete: number }).setup_complete) throw new SecurityError('AUTH_PERMISSION');
         if (["require", "requireDemo"].includes(method))
           return value.apply(target, args);
         const actor = auth.require().id;

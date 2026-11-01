@@ -328,7 +328,6 @@ export class BackupService {
     const unfreeze = this.auth.freeze();
     this.busy = true;
     const temporary = join(this.root, "recovery", `snapshot-${randomUUID()}`);
-    let output = "";
     try {
       await mkdir(temporary, { recursive: true, mode: 0o700 });
       await this.store.onlineSnapshot(join(temporary, "mosque-suite.sqlite3"));
@@ -390,7 +389,7 @@ export class BackupService {
       await mkdir(destination, { recursive: true });
       const canonical = await realpath(destination);
       const filename = `MosqueSuite-${this.auth.workspaceId}-${archive.createdAt.replace(/[:.]/g, "-")}-${randomUUID()}.msbackup`;
-      output = join(canonical, filename);
+      const output = join(canonical, filename);
       const staging = output + ".tmp";
       try {
         await writeFile(staging, encrypted, { flag: "wx", mode: 0o600 });

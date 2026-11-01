@@ -29,7 +29,23 @@ export function activeWorkspace(root: string) {
     lstatSync(target).isSymbolicLink()
   )
     throw new Error("Unsafe workspace link");
+  if (!existsSync(join(target, 'mosque-suite.sqlite3'))) throw new Error('Restored database is missing; automatic recreation is refused');
   return target;
+}
+export function checkedWorkspace(root: string) {
+  const target = activeWorkspace(root);
+  if (existsSync(join(root, 'workspace-established.json')) && !existsSync(join(target, 'mosque-suite.sqlite3'))) {
+    throw new Error('Existing database is missing; restore a verified backup instead of recreating it');
+  }
+  return target;
+}
+export function markWorkspaceEstablished(root: string) {
+  const marker = join(root, 'workspace-established.json');
+  if (!existsSync(marker)) {
+    const descriptor = openSync(marker, 'wx', 0o600);
+    try { writeFileSync(descriptor, JSON.stringify({ established: true })); fsyncSync(descriptor); }
+    finally { closeSync(descriptor); }
+  }
 }
 export function activateWorkspace(root: string, generation: string) {
   if (!/^generation-[\da-f-]{36}$/.test(generation))

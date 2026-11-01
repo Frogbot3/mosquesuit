@@ -1,6 +1,6 @@
 # Milestone delivery and acceptance
 
-Phases 0–5 are implemented through the fictional integration simulation and service foundation. [Phase 6 delivery](PHASE-6.md) defines the current security and recovery scope. The family sheet/import work remains planned. Independent security review and real provider activation remain release gates.
+Phases 0–6 are implemented through the fictional integration simulation, staff authorization and encrypted recovery. [Phase 7 verification](PHASE-7-VERIFICATION.md) adds stabilization and a supervised fictional pilot. The family sheet/import/ward creation work remains planned. Independent security review, verified Windows deployment and real provider activation remain release gates.
 
 | Phase | Deliverable | Acceptance |
 | --- | --- | --- |
@@ -12,7 +12,9 @@ Phases 0–5 are implemented through the fictional integration simulation and se
 | Deferred registration work | Printable family sheet, staged import and ward administration | Guardian-first sheet, preview/mapping/errors/duplicates/atomic rollback; still pending |
 | 5 | Messaging/payment integration simulation and service foundation | Implemented: consent/templates, approved offline queue, retries, signed mocked webhooks, atomic ledger reconciliation, private receipt delivery and schedules. Provider activation and production pairing remain gated. See PHASE-5.md. |
 | 6 | Staff security, audit and recovery | Implemented: Argon2id login, roles + ward scope, locks, account management, hash-chained audit, encrypted online snapshots and verified staged restore. See PHASE-6.md. |
-| Release gate | Accessibility/localization/installer/pilot | Manual clerk review, real print/font checks, signed install/upgrade/uninstall on clean Windows, fictional 500-family load tests |
+| 7 | QA, localization, load and recovery evidence, fictional pilot kit | Lint/translation gate, financial invariants, injected disk-full/transaction interruption, 500/2,000-family benchmarks, offline Electron/PDF/scaled-layout checks and staff guides; see Phase 7 report for actual results |
+| 8 priorities | Close pilot blockers before real-data approval | Signed installer and clean-machine lifecycle; dependency remediation; native Malayalam/Windows DPI/printer review; supervised recovery and privacy controls; then ward editing/family sheet/import scope and finer global-module ward access |
+| Release gate | Approved real-data deployment | Independent security/privacy/recovery acceptance, verified installer, resolved/accepted dependency findings and staff sign-off; provider activation separately approved |
 
 Security-sensitive schema/API design must accompany each phase. Phase 6 enforces access in IPC and services. Real sensitive records must wait for the remaining deployment and policy gates. The live accounting and privacy policies need administrator review before production use.
 
@@ -31,3 +33,5 @@ Phase 4 adds financial totals/idempotency, simulated permissions, historical fun
 Phase 5 verification: 87 unit/component/service tests and 25 Electron tests passed; one packaged test skipped. Mocked messaging/payment integration is now implemented. Real provider activation, production permissions, paired encrypted recovery and a verified installer remain pending. See PHASE-5.md.
 
 The preceding counts and pending items describe their original phase deliveries. Phase 6 now implements staff authorization and paired encrypted recovery: **111 unit/component/service tests and 29 Electron tests passed**, with one packaged test skipped. TypeScript and all production builds passed. See [Phase 6 verification](PHASE-6-VERIFICATION.md) for security/restore results and current release blockers.
+
+Phase 7 final verification: **115 unit/component/service tests, 30 Electron tests and two separate load scenarios passed**; one packaged test skipped. ESLint, bilingual-catalogue validation, TypeScript and production builds passed. Measured restoration at 500/2,000 families, new disk-full/interruption drills and a fictional source kit are included. The [Phase 7 report](PHASE-7-VERIFICATION.md) supersedes earlier verification counts and identifies the remaining production gates.

@@ -3,11 +3,16 @@ import { WorkspaceProvider } from './components/WorkspaceProvider';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { SecurityProvider } from './components/SecurityProvider';
+import { securityText } from '../shared/security-labels';
+function RouteFailure() { const locale = document.documentElement.lang === 'ml' ? 'ml' : 'en'; return <main className="startup"><h1>{securityText(locale, 'pageUnavailable')}</h1><p>{securityText(locale, 'restartHelp')}</p></main>; }
 
 const router = createHashRouter([{
   element: <SecurityProvider><WorkspaceProvider><Layout /></WorkspaceProvider></SecurityProvider>,
-  errorElement: <main className="startup"><h1>Unable to open this page</h1><p>Restart Mosque Suite to reopen the local workspace.</p></main>,
+  errorElement: <RouteFailure />,
   children: [
+    { path: 'setup', lazy: async () => ({ Component: (await import('./pages/Release')).MosqueSetupPage }) },
+    { path: 'imports', lazy: async () => ({ Component: (await import('./pages/Imports')).ImportsPage }) },
+    { path: 'about', lazy: async () => ({ Component: (await import('./pages/Release')).AboutPage }) },
     { path:'staff',lazy:async()=>({Component:(await import('./pages/Security')).StaffDirectory}) },
     { path:'staff/new',lazy:async()=>({Component:(await import('./pages/Security')).StaffProfile}) },
     { path:'staff/roles',lazy:async()=>({Component:(await import('./pages/Security')).RoleEditor}) },
